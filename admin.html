@@ -1,0 +1,82 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Message Server</title>
+        <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font: 13px Helvetica, Arial; }
+        #messages { list-style-type: none; margin: 0; padding: 0; }
+        #messages li { padding: 5px 10px; }
+        #messages li:nth-child(odd) { background: #eee; }
+        </style>
+    </head>
+    <body>
+    <ul id="messages"></ul>
+    <script src="https://d2kywj9k786klm.cloudfront.net/client.js"></script>
+    <script>
+            //https://d3sat2pvyv70fh.cloudfront.net
+            (function() {
+
+                var credentials={
+                        "appId": "098f6bcd4621d373cade4e832627b4f6",
+                        "namespace": "test",
+                        "username": "test-monitor",
+                        "password": "password",
+                    }
+
+                var append=function(string, className){
+
+
+                    string=string.replace(credentials.appId+"/"+credentials.namespace,'<span title="'+credentials.appId+"/"+credentials.namespace+'" >...</span>');
+                    string=string.replace(client.getId(),'<span title="'+client.getId()+'" >you</span>');
+
+
+                    
+
+                    var li=document.createElement("li");
+                    li.innerHTML=string;
+                    li.className=className||"";
+                    document.getElementById('messages').appendChild(li);
+
+                };
+
+                
+
+
+                var client=(new SocketIOClient('https://socketio.nickolanack.com'))
+                    .connect(credentials);
+                    
+                // client.presence('chat', 'message', function(msg) {
+                //     var c=msg.list.length;
+                //     append(c+" user"+(c==1?"":"s")+" in: `chat{message}`");
+                // });
+
+
+                (['admin/emit', 'admin/connect', 'admin/presence', 'admin/disconnect', 'admin/error', 'admin/join', 'admin/leave']).forEach(function(adminChannel) {
+                    client.subscribe(adminChannel, function(msg) {
+                        append("<h3>"+adminChannel + ":</h3> <pre>" + JSON.stringify(msg, null, '    ')+"</pre>", adminChannel.split('/').pop());
+                    });
+                });
+
+
+                // var unsubscribe=null;
+                // setInterval(function(){
+
+                //     if(unsubscribe){
+                //         client.unsubscribe(unsubscribe);
+                //         unsubscribe=null;
+                //         return;
+                //     }
+
+                //     unsubscribe=client.subscribe('chat', 'message', function(msg) {
+                //         append(msg);
+                //     })
+
+                // }, 5000+(Math.random()*5000));
+
+
+
+            })();
+            </script>
+        </body>
+    </html>
