@@ -213,9 +213,22 @@ function SIOServer() {
 
     me.clientCanEmit = function(credentials) {
 
-        if (credentials.username == "{test-server-name}" && credentials.password == "{password}" && credentials.appId == "{test-app-id}") {
+        var fs = require('fs');
+        var appDataFile=__dirname+'/appdata/'+credentials.appId+'.json';
+        if(!(credentials.appId&&fs.existsSync(appDataFile))){
+            return false;
+        }
+
+        var appData=JSON.parse(fs.readFileSync(appDataFile));
+
+        if (credentials.username === appData.username && credentials.password === appData.password) {
             return true;
         }
+
+        if (credentials.apiKey ==appData.apiKey) {
+            return true;
+        }
+
         return false;
 
     };
