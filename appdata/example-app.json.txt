@@ -1,0 +1,4 @@
+{
+	"username":"someusername",
+	"password":"somepassword"
+}

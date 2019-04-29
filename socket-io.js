@@ -36,12 +36,8 @@ function SIOServer() {
         console.log(JSON.stringify(socket.request.headers));
         socket.once('authenticate', function(credentials) {
 
-            if (!me.isValidCredentials(credentials)) {
-                io.in('admin').emit('admin/error', 'Invalid credentials: [' + Object.keys(credentials).join(', ') + ']');
-                return;
-            }
 
-            var user={
+             var user={
                 user:credentials.username||"guest",
                 socket:socket.id
             }
@@ -49,19 +45,45 @@ function SIOServer() {
             var rooms=[];
 
 
+            if (me.clientCanMonitorAdmin(credentials)) {
+                socket.join('admin');
+                if (!me.isValidApp(credentials)) {
+                    return;
+                }
+            }
+
+
+            if (!me.isValidApp(credentials)) {
+                console.log('Invalid');
+                io.in('admin').emit('admin/error', 'Invalid credentials: [' + Object.keys(credentials).join(', ') + ']');
+                return;
+            }
+
+           
+
+
             var namespace = credentials.namespace || 'default';
             var appId = credentials.appId || 'default';
 
             if (me.clientCanEmit(credentials)) {
                 socket.on('emit', function(msg) {
+
+                    io.in(appId + '/' + namespace + '/' + msg.channel).clients(function(err, list){
+                        io.in('admin').emit('admin/emit', extend(extend(msg, user), {
+                            'appId': appId,
+                            'namespace':namespace,
+                            'subscribers':list
+                        }));
+
+
+                    });
+
                     io.in(appId + '/' + namespace + '/' + msg.channel).emit(msg.channel, msg.data);
-                    io.in('admin').emit('admin/emit', extend(msg, user));
+                    
                 });
             }
 
-            if (me.clientCanMonitor(credentials)) {
-                socket.join('admin');
-            }
+            
 
             socket.on('subscribe', function(channel) {
 
@@ -77,7 +99,9 @@ function SIOServer() {
                 socket.join(appId + '/' + namespace + '/' + channel, function(){
 
                     io.in('admin').emit('admin/join', extend({
-                        channel: appId + '/' + namespace + '/' + channel
+                        'appId': appId,
+                        'namespace':namespace,
+                        channel: channel
                     }, user));
 
                     rooms=Object.keys(socket.rooms);
@@ -207,7 +231,7 @@ function SIOServer() {
         });
     }
 
-    me.isValidCredentials = function(credentials) {
+    me.isValidApp = function(credentials) {
         return (credentials.appId);
     };
 
@@ -233,9 +257,17 @@ function SIOServer() {
 
     };
 
-    me.clientCanMonitor = function(credentials) {
+    me.clientCanMonitorAdmin = function(credentials) {
 
-        if (credentials.username == "{test-monitor-name}" && credentials.password == "{password}") {
+        var fs = require('fs');
+        var adminDataFile=__dirname+'/appdata/admin.json';
+        if(!fs.existsSync(adminDataFile)){
+            return false;
+        }
+
+        var adminData=JSON.parse(fs.readFileSync(adminDataFile));
+
+        if (credentials.username === adminData.username && credentials.password === adminData.password) {
             return true;
         }
         return false;
