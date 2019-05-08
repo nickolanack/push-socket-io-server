@@ -33,13 +33,18 @@ function SIOServer() {
     
     io.on('connection', function(socket) {
 
-        console.log(JSON.stringify(socket.request.headers));
-        socket.once('authenticate', function(credentials) {
+        console.log('socket: '+socket.request.headers['x-forwarded-for']);
+        socket.once('authenticate', function(credentials, authCallback) {
 
+
+            if(!authCallback){
+                authCallback=function(){}
+            }
 
              var user={
                 user:credentials.username||"guest",
-                socket:socket.id
+                socket:socket.id,
+                ip:socket.request.headers['x-forwarded-for']
             }
 
             var rooms=[];
@@ -47,26 +52,39 @@ function SIOServer() {
 
             if (me.clientCanMonitorAdmin(credentials)) {
                 socket.join('admin');
+                console.log('admin join: '+JSON.stringify(user));
                 if (!me.isValidApp(credentials)) {
+                    authCallback(true);
                     return;
                 }
+                socket.on('disconnect', function() {
+                    console.log('admin disconnect '+JSON.stringify(user));
+                });
             }
 
 
             if (!me.isValidApp(credentials)) {
                 console.log('Invalid');
-                io.in('admin').emit('admin/error', 'Invalid credentials: [' + Object.keys(credentials).join(', ') + ']');
+                if(credentials.password){
+                    credentials.password=credentials.password[0]+"xxxxx...";
+                }
+                io.in('admin').emit('admin/error', 'Invalid app: [' + JSON.stringify(credentials) + ']');
+                authCallback(false);
                 return;
             }
 
-           
+           authCallback(true);
 
 
             var namespace = credentials.namespace || 'default';
             var appId = credentials.appId || 'default';
 
             if (me.clientCanEmit(credentials)) {
-                socket.on('emit', function(msg) {
+                socket.on('emit', function(msg, emitCallback) {
+
+                    if(!emitCallback){
+                        emitCallback=function(){}
+                    }
 
                     io.in(appId + '/' + namespace + '/' + msg.channel).clients(function(err, list){
                         io.in('admin').emit('admin/emit', extend(extend(msg, user), {
@@ -79,6 +97,7 @@ function SIOServer() {
                     });
 
                     io.in(appId + '/' + namespace + '/' + msg.channel).emit(msg.channel, msg.data);
+                    emitCallback(true);
                     
                 });
             }
@@ -95,7 +114,7 @@ function SIOServer() {
                
 
 
-
+                console.log('channel join: '+appId + '/' + namespace + '/' + channel+': '+JSON.stringify(user));
                 socket.join(appId + '/' + namespace + '/' + channel, function(){
 
                     io.in('admin').emit('admin/join', extend({
@@ -117,7 +136,9 @@ function SIOServer() {
                             });
                             io.in('admin').emit('admin/presence', extend({
                                 list:list,
-                                channel:appId + '/' + namespace + '/' + channel,
+                                'appId': appId,
+                               'namespace':namespace,
+                                channel:channel,
                                 added:user
                             }));
                         });

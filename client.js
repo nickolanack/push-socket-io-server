@@ -21,6 +21,33 @@ var SocketIOClient=(function(){
             secure: true
         });
 
+        me._isConnected=false;
+
+        socket.on('disconnect', function () {
+			me._isConnected=false;
+        	console.log('disconnected')
+
+        	me._socket.once('connect',function(){
+
+        		//resubscribe!
+
+        		Object.keys(me.subscriptions).forEach(function(channel){
+        			me._socket.emit('subscribe', channel);
+        		});
+        		
+        	})
+
+        });
+
+		socket.on('connect', function () {
+			me._isConnected=true;
+        	console.log('connected')
+
+        });
+
+
+
+
 		me._socket=socket;
 
        
@@ -30,8 +57,14 @@ var SocketIOClient=(function(){
 	client.prototype={
 		connect:function(credentials){
 			var me=this;
+			var auth=function(){
+				me._socket.emit('authenticate', credentials);
+			}
+			if(me._isConnected){
+				auth();
+			}
+			me._socket.on('connect', auth);
 
-			me._socket.emit('authenticate', credentials);
 
 			me.subscriptions={};
 
@@ -48,17 +81,26 @@ var SocketIOClient=(function(){
 				callback=event;
 			}
 
-			if(!me.subscriptions[channel]){
-				me._socket.emit('subscribe', channel);
-				me.subscriptions[channel]=0;
-			}
-			me.subscriptions[channel]++;
+			var sub=function(){
 
+				if(!me.subscriptions[channel]){
+					me._socket.emit('subscribe', channel);
+					me.subscriptions[channel]=0;
+				}
 			
-			me._socket.on(channel, callback);
+			
+				me.subscriptions[channel]++;
+				me._socket.on(channel, callback);
+
+			}
+
+			if(me._isConnected){
+				sub();
+			}
+			me._socket.once('connect', sub);
 
 			return function(){
-
+				
 				me.subscriptions[channel]--;
 				if(me.subscriptions[channel]===0){
 					me._socket.emit('unsubscribe', channel);

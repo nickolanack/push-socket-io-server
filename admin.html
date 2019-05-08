@@ -39,11 +39,15 @@
 
                 };
 
-                
+                document.addEventListener('keypress', function(e){
+                    console.log(e);
+                    if(e.key==="k"){
+                        document.getElementById('messages').innerHTML="";
+                    }
+                });
 
 
-                var client=(new SocketIOClient('https://socketio.nickolanack.com'))
-                    .connect(credentials);
+                var client=(new SocketIOClient('https://socketio.nickolanack.com')).connect(credentials);
                     
                 // client.presence('chat', 'message', function(msg) {
                 //     var c=msg.list.length;
