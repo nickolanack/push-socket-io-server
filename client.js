@@ -70,6 +70,10 @@ var SocketIOClient=(function(){
 
 			return me
 		},
+		send:function(event, data, callback){
+			var me=this;
+			me._socket.emit(event, data, callback);
+		},
 		subscribe:function(channel, event, callback){
 			var me=this;
 

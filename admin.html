@@ -8,9 +8,54 @@
         #messages { list-style-type: none; margin: 0; padding: 0; }
         #messages li { padding: 5px 10px; }
         #messages li:nth-child(odd) { background: #eee; }
+
+
+        button {
+            background-color: white;
+            margin: 5px;
+            padding: 5px;
+            border: 1px solid;
+            border-radius: 2px;
+            box-shadow: 0 0 3px rgba(0,0,0,0.4);
+            cursor: pointer;
+        }
+
+        ul#menu li {
+            display: inline-block;
+        }
+
+        li.hide {
+            display: none;
+        }
+
+        span.collapse>span {
+            display: none;
+        }
+
+        span.collapse:after {
+            content: attr(data-name);
+            color: cornflowerblue;
+            display: inline-block;
+            background: white;
+            padding: 0 3px;
+            margin: 0 3px;
+            box-shadow: 0 0 3px rgba(0,0,0,0.1);
+            border-radius: 2px;
+        }
+
+        span.collapse.active>span {
+            display: inline;
+        }
+
+        span.collapse.active:after {
+            content: "hide";
+        }
+
+
         </style>
     </head>
     <body>
+    <ul id="menu"></ul>
     <ul id="messages"></ul>
     <script src="https://d2kywj9k786klm.cloudfront.net/client.js"></script>
     <script>
@@ -18,25 +63,119 @@
 
                 var credentials={
                         "appId": "",
-                        "username": "monitor-user",
-                        "password": "super-test-monitor",
+                        "username": "{{username}}",
+                        "password": "{{password}}",
                     }
 
-                var append=function(string, className){
+
+                var show=10;
+                var maxShow=100;
 
 
+                var addButton=function(name, fn){
+
+                  var li=document.createElement("li");
+                  var btn=document.createElement("button");
+                  li.appendChild(btn);
+                  btn.onclick=fn;
+                  btn.innerHTML=name;
+                  document.getElementById('menu').appendChild(li); 
+                };
+
+
+                var insert=function(string, className){
+
+                    var el=document.getElementById('messages');
+                    if(!el.firstChild){
+                        append(string, className);
+                        return;
+                    }
+
+                    var li=document.createElement("li");
+                    li.innerHTML=replacements(string);
+
+                    addClass(li, className);
+                   
+
+                    
+                    el.insertBefore(li, el.firstChild);
+                    events(li);
+                    limit();
+                      
+
+                }
+
+                var hasClass=function(el, className){
+                    return (el.className||"").split(" ").indexOf(className)>=0;
+                }
+
+                var addClass=function(el, className){
+
+                    
+                    var name=(el.className||"").split(" ").concat((className||"").split(" ")).filter(function(value, index, array){
+                        return array.indexOf(value)===index;
+                    }).join(" ");
+
+                    el.className=name;
+                }
+
+                var removeClass=function(el, className){
+
+                    var remove=(className||"").split(" ")
+
+                    var name=(el.className||"").split(" ").filter(function(value, index, array){
+                        return array.indexOf(value)===index&&remove.indexOf(value)==-1;
+                    }).join(" ");
+
+                    el.className=name;
+
+                }
+
+                var limit=function(){
+                     var el=document.getElementById('messages');
+                     while(el.childNodes.length>maxShow){
+                        el.removeChild(el.childNodes.item(el.childNodes.length-1));
+                     }  
+
+                     for(var i=0;i<el.childNodes.length;i++){
+
+                        if(i>=show){
+                            addClass(el.childNodes.item(i), "hide");
+                        }else{
+                            removeClass(el.childNodes.item(i), "hide");
+                        }
+                     }      
+                }
+
+                var replacements=function(string){
+                    
                     string=string.replace(credentials.appId+"/"+credentials.namespace,'<span title="'+credentials.appId+"/"+credentials.namespace+'" >...</span>');
                     string=string.replace(client.getId(),'<span title="'+client.getId()+'" >you</span>');
 
+                    return string;
 
-                    
+                }
+
+                var append=function(string, className){
 
                     var li=document.createElement("li");
-                    li.innerHTML=string;
-                    li.className=className||"";
+                    li.innerHTML=replacements(string);
+                    addClass(li, className);
                     document.getElementById('messages').appendChild(li);
+                    events(li);
+                    limit();
 
                 };
+
+                var nameof=function(channel, msg){
+                    if(channel=="admin/presence"){
+
+                        key=msg[added]?'added':'removed';
+                        return (msg[key].user+" (<span>"+msg[key][socket]+"</span>)")+key
+
+
+                    }
+                }
 
                 document.addEventListener('keypress', function(e){
                     console.log(e);
@@ -56,10 +195,145 @@
 
                 (['admin/emit', 'admin/connect', 'admin/presence', 'admin/disconnect', 'admin/error', 'admin/join', 'admin/leave']).forEach(function(adminChannel) {
                     client.subscribe(adminChannel, function(msg) {
-                        append("<h3>"+adminChannel + ":</h3> <pre>" + JSON.stringify(msg, null, '    ')+"</pre>", adminChannel.split('/').pop());
+                        insert('<h3><span class="admin-channel">'+adminChannel + '</span><span class="event">'+nameof(adminChannel, msg) + "</span>:</h3> <pre>" + stringify(msg)+"</pre>", adminChannel.split('/').pop());
                     });
                 });
 
+
+                addButton('ListClients', function(){
+                    client.send('client-list', {}, function(list){
+                         insert("<h3>List clients: </h3> <pre>" + stringify(list)+"</pre>");
+                    });
+                });
+                addButton('List Apps', function(){
+                    client.send('app-list', {}, function(list){
+                         insert("<h3>List apps: </h3> <pre>" + stringify(list)+"</pre>");
+                    });
+                });
+                addButton('Clear', function(){
+                    client.send('app-list', {}, function(list){
+                        document.getElementById('messages').innerHTML="";
+                    });
+                });
+
+                addButton('10', function(){
+                    show=10;
+                    limit();
+                });
+                addButton('25', function(){
+                    show=25;
+                    limit();
+                });
+                addButton('100', function(){
+                    show=100;
+                    limit();
+                });
+
+                var events=function(li){
+                    li.onclick=function(e){
+                        console.log(e);
+
+                        if(hasClass(e.target, 'collapse')){
+                            if(!hasClass(e.target, 'active')){
+                                addClass(e.target, 'active');
+                                return;
+                            }
+                            removeClass(e.target, 'active');
+
+                        }
+                    };
+                }
+                var objectReplacements=function(obj, replacements, depth){
+
+                      var replace=["channels", "usersChannels", "added", "removed", "list"];
+                      var replacements=replacements||{};
+
+                    if(_isObject(obj)){
+
+
+
+                      
+                        replace.forEach(function(key){
+                            if(obj[key]){
+
+                                var i=0;
+                                var rkey="%"+key+"-"+i+"%";
+                                while(replacements[rkey]){
+                                    i++;
+                                    rkey="%"+key+"-"+i+"%";
+                                }
+                               
+                                var name=(_isArray(obj[key])?("array:"+obj[key].length)+" +":"object +");
+                                replacements[rkey]='<span class="collapse" data-name="'+name+'"><span>'+JSON.stringify(obj[key], null, '    ')+"</span></span>";
+                                obj[key]=rkey;
+
+                            }
+                        });
+
+                        Object.keys(obj).forEach(function(key){
+                            extend(objectReplacements(obj[key]), replacements);
+                        });
+
+                    }
+
+                    if(_isArray(obj)){
+                        obj.forEach(function(item){
+                            objectReplacements(item, replacements);
+                        });
+                    }
+
+                    return replacements;
+
+                }
+
+
+                var _isArray = function(thing) {
+                    return Object.prototype.toString.call(thing) === "[object Array]";
+                }
+
+
+                var _isObject = function(thing) {
+                    return Object.prototype.toString.call(thing) === "[object Object]";
+                }
+
+                var extend = function(a, b) {
+
+                    b = b || {};
+                    Object.keys(b).forEach(function(k) {
+                        a[k] = b[k];
+                    });
+
+                    return a;
+                }
+                var stringify=function(obj){
+
+                    
+
+                   
+                    
+                    var replacements=objectReplacements(obj);
+                    var out = JSON.stringify(obj, null, '    ');
+
+                    Object.keys(replacements).forEach(function(key){
+
+                        var i=out.indexOf(key);
+                        var prefix="";
+                        while(out[i]!=="\n"&&i>=0){
+                            if(out[i]==" "){
+                                prefix=prefix+" ";
+                            }
+                            i--;
+                        }
+
+                        out=out.replace('"'+key+'"', (replacements[key].split("\n").join("\n"+prefix)));
+
+                    });
+
+                    return out+JSON.stringify(Object.keys(replacements));
+
+
+
+                }
 
                 // var unsubscribe=null;
                 // setInterval(function(){

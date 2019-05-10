@@ -1,1 +1,2 @@
 appdata/*.json
+/node_modules

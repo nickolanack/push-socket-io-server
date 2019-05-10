@@ -1,11 +1,13 @@
 
 var extend = function(a, b) {
 
-    b = b || {};
-    Object.keys(b).forEach(function(k) {
-        a[k] = b[k];
-    });
 
+    Array.prototype.slice.call(arguments, 1).forEach(function(b){
+        b = b || {};
+        Object.keys(b).forEach(function(k) {
+            a[k] = b[k];
+        });
+    });
     return a;
 }
 
@@ -27,7 +29,40 @@ function SIOServer() {
         res.sendFile(__dirname + '/client.js');
     });
     app.get('/admin', function(req, res) {
-        res.sendFile(__dirname + '/admin.html');
+
+        var Twig = require('twig');
+        var twig = Twig.twig;
+
+        var fs = require('fs');
+
+
+        fs.readFile(__dirname + '/admin.html', function(err, data){
+
+            if(err){
+                console.log('error:'+err);
+                return;
+            }
+
+           
+            var template = twig({
+                data: data.toString()
+            });
+
+
+            fs.readFile(__dirname + '/appdata/admin.json', function(err, data){
+                if(err){
+                    console.log('error:'+err);
+                    return;
+                }
+                var out = template.render(JSON.parse(data.toString()));
+                res.send(out);
+            });
+
+            
+
+        })
+        
+
     });
 
     
@@ -41,17 +76,17 @@ function SIOServer() {
                 authCallback=function(){}
             }
 
-             var user={
+            var user={
                 user:credentials.username||"guest",
                 socket:socket.id,
                 ip:socket.request.headers['x-forwarded-for']
             }
 
-            var rooms=[];
-
 
             if (me.clientCanMonitorAdmin(credentials)) {
-                socket.join('admin');
+                socket.join('admin', function(){
+                    me._addAdminListeners(socket, user);
+                });
                 console.log('admin join: '+JSON.stringify(user));
                 if (!me.isValidApp(credentials)) {
                     authCallback(true);
@@ -79,6 +114,12 @@ function SIOServer() {
             var namespace = credentials.namespace || 'default';
             var appId = credentials.appId || 'default';
 
+            var appInfo=me.getAppInfo(credentials);
+
+            extend(user, appInfo);
+            me.addUser(socket, user);
+            
+
             if (me.clientCanEmit(credentials)) {
                 socket.on('emit', function(msg, emitCallback) {
 
@@ -87,13 +128,9 @@ function SIOServer() {
                     }
 
                     io.in(appId + '/' + namespace + '/' + msg.channel).clients(function(err, list){
-                        io.in('admin').emit('admin/emit', extend(extend(msg, user), {
-                            'appId': appId,
-                            'namespace':namespace,
+                        io.in('admin').emit('admin/emit', extend({
                             'subscribers':list
-                        }));
-
-
+                        }, msg, user));
                     });
 
                     io.in(appId + '/' + namespace + '/' + msg.channel).emit(msg.channel, msg.data);
@@ -118,12 +155,11 @@ function SIOServer() {
                 socket.join(appId + '/' + namespace + '/' + channel, function(){
 
                     io.in('admin').emit('admin/join', extend({
-                        'appId': appId,
-                        'namespace':namespace,
                         channel: channel
                     }, user));
 
-                    rooms=Object.keys(socket.rooms);
+
+                    me._updateUsersRooms(socket);
                     console.log('join: '+appId + '/' + namespace + '/' + channel);
                     console.log(JSON.stringify(socket.rooms));
 
@@ -135,12 +171,10 @@ function SIOServer() {
                                 added:user
                             });
                             io.in('admin').emit('admin/presence', extend({
-                                list:list,
-                                'appId': appId,
-                               'namespace':namespace,
+                                list:list,      
                                 channel:channel,
                                 added:user
-                            }));
+                            }, appInfo));
                         });
                        
                     }
@@ -168,7 +202,8 @@ function SIOServer() {
                         channel: appId + '/' + namespace + '/' + channel
                     }, user));
 
-                    rooms=Object.keys(socket.rooms);
+
+                    me._updateUsersRooms(socket);
                     console.log('left: '+appId + '/' + namespace + '/' + channel);
                     console.log(JSON.stringify(socket.rooms));
 
@@ -181,9 +216,8 @@ function SIOServer() {
                             });
                             io.in('admin').emit('admin/presence', extend({
                                 list:list,
-                                channel:appId + '/' + namespace + '/' + channel,
                                 removed:user
-                            }));
+                            }, appInfo));
                         });
                        
                     }
@@ -207,10 +241,8 @@ function SIOServer() {
 
                 socket.on('disconnect', function() {
                     io.in('admin').emit('admin/disconnect', user);
-                    var filteredRooms=rooms.filter(function(channelPath){
-
+                    var filteredRooms=me.getUserRooms(socket).filter(function(channelPath){
                         return channelPath.indexOf('.presence')<0&&channelPath.indexOf(appId + '/' + namespace)===0;
-
                     });
                     filteredRooms.forEach(function(channelPath){
 
@@ -228,7 +260,7 @@ function SIOServer() {
                                     channel:channelPath,
                                     removed:user,
                                     usersChannels:filteredRooms
-                                }));
+                                }, appInfo));
                             });
                            
                         
@@ -245,12 +277,150 @@ function SIOServer() {
     });
 
 
+    me.addUser=function(socket, user){
+
+
+        if(!me._users){
+            me._users={};
+        }
+
+        if(me._users[socket.id]){
+            return;
+        }
+
+        me._users[socket.id]=user;
+
+        socket.on('disconnect', function() {
+            delete me._users[socket.id];
+        });
+
+    }
+
+
+    me._updateUsersRooms=function(socket){
+
+
+        var id=socket.id;
+        if(!me._rooms){
+            me._rooms={};
+
+            socket.on('disconnect', function() {
+                setTimeout(function(){
+                    delete me._rooms[id];
+                }, 500);
+            });
+        }
+
+        me._rooms[id]=Object.keys(socket.rooms);
+
+
+        
+
+    }
+
+    me.getUserRooms=function(socket){
+
+        var id=socket.id||socket;
+
+        if(!me._rooms){
+           return [];
+        }
+
+        if(!me._rooms[id]){
+            return [];
+        }
+        return me._rooms[id];
+
+    }
+
+
+    me.getUserInfo=function(socket){
+
+        var id=socket.id||socket;
+
+        if(!me._users){
+            return {};
+        }
+
+        if(!me._users[id]){
+            return {};
+        }
+
+        return me._users[id];
+    }
+
+
+    me.getAppInfo=function(credentials){
+
+        var fs = require('fs');
+        var appDataFile=__dirname+'/appdata/'+credentials.appId+'.json';
+        if(!(credentials.appId&&fs.existsSync(appDataFile))){
+            return {
+
+                "namespace" : credentials.namespace || 'default',
+                "appId" : credentials.appId || 'default',
+                "project":"invalid"
+
+            };
+        }
+
+        var appData=JSON.parse(fs.readFileSync(appDataFile));
+
+        return {
+
+            "namespace" : credentials.namespace || 'default',
+            "appId" : credentials.appId || 'default',
+            "project":appData.project||(credentials.appId+".json")
+
+        };
+    }
+
+    me._addAdminListeners=function(socket){
+
+        /**
+         * add admin functions, only channel members of `admin` can access
+         */
+
+        socket.on('client-list', function(args, callback){
+            io.sockets.clients(function(err, list){
+
+                if(err){
+                    callback(err);
+                    return;
+                }
+
+                callback(list.map(function(socket){
+                    return extend({
+                        'channels':me.getUserRooms(socket)
+                    }, me.getUserInfo(socket))
+                }));
+            })
+        }); 
+
+        socket.on('app-list', function(args, callback){
+            io.sockets.clients(function(err, list){
+
+                if(err){
+                    callback(err);
+                    return;
+                }
+
+                callback(list.map(function(socket){
+                    var info=me.getUserInfo(socket);
+                    return info.appId+" "+info.project;
+                }).filter(function(value, index, array){
+                    return array.indexOf(value)===index;
+                }));
+            })
+        });      
+    };
+
 
     me.listen = function(port) {
         http.listen(port, function() {
             console.log('listening on *:' + port);
         });
-    }
+    };
 
     me.isValidApp = function(credentials) {
         return (credentials.appId);
