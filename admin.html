@@ -52,6 +52,25 @@
         }
 
 
+        pre.closable {
+            font-size: 0;
+        }
+
+        pre.closable:after {
+            content: "{...}";
+            font-size: 12px;
+            color: cornflowerblue;
+            cursor: pointer;
+        }
+
+        pre.closable.active {
+            font-size: 12px;
+        }
+
+        pre.closable.active:after {
+            content: "hide";
+        }
+
         </style>
     </head>
     <body>
@@ -169,12 +188,26 @@
 
                 var nameof=function(channel, msg){
                     if(channel=="admin/presence"){
-
-                        key=msg[added]?'added':'removed';
-                        return (msg[key].user+" (<span>"+msg[key][socket]+"</span>)")+key
-
-
+                        key=msg['added']?'added':'removed';
+                        return '<span> '+msg[key].user+" "+(msg['project']||msg['appId'])+'/'+msg['channel']+'</span>';
                     }
+
+
+                    if(channel=="admin/join"){
+                       
+                        return ' <span> '+msg['user']+" "+(msg['project']||msg['appId'])+'/'+msg['channel']+'</span>';
+                    }
+
+                    return '';
+                }
+
+                var preStyle=function(channel, msg){
+
+                    if(channel=="admin/presence"){
+                        return "closable";
+                    }
+
+                    return '';
                 }
 
                 document.addEventListener('keypress', function(e){
@@ -195,7 +228,7 @@
 
                 (['admin/emit', 'admin/connect', 'admin/presence', 'admin/disconnect', 'admin/error', 'admin/join', 'admin/leave']).forEach(function(adminChannel) {
                     client.subscribe(adminChannel, function(msg) {
-                        insert('<h3><span class="admin-channel">'+adminChannel + '</span><span class="event">'+nameof(adminChannel, msg) + "</span>:</h3> <pre>" + stringify(msg)+"</pre>", adminChannel.split('/').pop());
+                        insert('<h3><span class="admin-channel">'+adminChannel + '</span><span class="event">'+nameof(adminChannel, msg) + '</span>:</h3> <pre class="'+preStyle(adminChannel, msg)+'">' + stringify(msg)+"</pre>", adminChannel.split('/').pop());
                     });
                 });
 
@@ -234,6 +267,16 @@
                         console.log(e);
 
                         if(hasClass(e.target, 'collapse')){
+                            if(!hasClass(e.target, 'active')){
+                                addClass(e.target, 'active');
+                                return;
+                            }
+                            removeClass(e.target, 'active');
+
+                        }
+
+
+                        if(hasClass(e.target, 'closable')){
                             if(!hasClass(e.target, 'active')){
                                 addClass(e.target, 'active');
                                 return;
@@ -329,7 +372,7 @@
 
                     });
 
-                    return out+JSON.stringify(Object.keys(replacements));
+                    return out;
 
 
 

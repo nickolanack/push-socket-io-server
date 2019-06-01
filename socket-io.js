@@ -137,6 +137,96 @@ function SIOServer() {
                     emitCallback(true);
                     
                 });
+
+
+                socket.on('presence', function(msg, emitCallback){
+                     if(!emitCallback){
+                        emitCallback=function(){}
+                    }
+
+
+                    if((!msg.channel)&&msg.channels){
+                      
+
+                        var listPresence=[];
+                        var getChannelPresence=function(channels, then){
+
+                            var temp=channels.slice(0);
+                            if(!temp.length){
+                                then(listPresence);
+                                return;
+                            }
+
+                            io.in(appId + '/' + namespace + '/' + channels[0]).clients(function(err, list){
+                                var users=list.map(function(u){return me.getUserInfo(u); });
+
+                                listPresence.push({
+                                    'channel':channels[0],
+                                    'presence':users
+                                });
+                                
+                                getChannelPresence(channels.slice(1), then);
+
+                            });
+                        };
+
+                        getChannelPresence(msg.channels.slice(0), function(list){
+
+
+                            io.in('admin').emit('admin/emit', extend({
+                               'channels':msg.channels,
+                               'presence':list
+                            }, msg, user));
+
+                             socket.emit('presence', {
+                               'channels':msg.channels,
+                               'presence':list
+                            });
+
+                            emitCallback({
+                                'channels':msg.channels,
+                               'presence':list
+                            });
+
+
+                        });
+
+
+                        return;
+
+                    }
+
+
+                    io.in(appId + '/' + namespace + '/' + msg.channel).clients(function(err, list){
+
+                        var users=list.map(function(u){return me.getUserInfo(u); });
+
+                        io.in('admin').emit('admin/emit', extend({
+                           'channel':appId + '/' + namespace + '/' + msg.channel,
+                           'presence':users
+                        }, msg, user));
+
+                         socket.emit('presence', {
+                            channel:appId + '/' + namespace + '/' + msg.channel,
+                            presence:users
+                        });
+
+                        emitCallback({
+                            channel:appId + '/' + namespace + '/' + msg.channel,
+                            presence:users
+                        });
+
+                    });
+
+                   
+
+
+
+                   
+                })
+
+
+
             }
 
             
@@ -167,7 +257,7 @@ function SIOServer() {
                         io.in(appId + '/' + namespace + '/' + channel).clients(function(err, list){
                             io.in(appId + '/' + namespace + '/' + channel+".presence").emit(channel+'.presence', {
                                 list:list,
-                                channel:appId + '/' + namespace + '/' + channel,
+                                channel:channel,
                                 added:user
                             });
                             io.in('admin').emit('admin/presence', extend({
@@ -211,11 +301,12 @@ function SIOServer() {
                         io.in(appId + '/' + namespace + '/' + channel).clients(function(err, list){
                             io.in(appId + '/' + namespace + '/' + channel+".presence").emit(channel+'.presence', {
                                 list:list,
-                                channel:appId + '/' + namespace + '/' + channel,
+                                channel:channel,
                                 removed:user
                             });
                             io.in('admin').emit('admin/presence', extend({
                                 list:list,
+                                channel:channel,
                                 removed:user
                             }, appInfo));
                         });
@@ -252,12 +343,12 @@ function SIOServer() {
                             io.in(channelPath).clients(function(err, list){
                                 io.in(channelPath+".presence").emit(channel+'.presence', {
                                     list:list,
-                                    channel:channelPath,
+                                    channel:channel,
                                     removed:user
                                 });
                                 io.in('admin').emit('admin/presence', extend({
                                     list:list,
-                                    channel:channelPath,
+                                    channel: channel,
                                     removed:user,
                                     usersChannels:filteredRooms
                                 }, appInfo));
