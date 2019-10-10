@@ -12,7 +12,7 @@ socket io server customized to provide push message functionality
 	cd push-socket-io-server
 	npm Install
 
-	echo echo '{"username" : "{someusername}", "password" : "{somepassword}"}' | {app-id}.json
+	echo echo '{"username" : "{someusername}", "password" : "{somepassword}"}' > appdata/{app-id}.json
 
 	node socker-io.js
 
