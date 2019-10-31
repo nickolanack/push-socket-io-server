@@ -120,24 +120,36 @@ function SIOServer() {
             me.addUser(socket, user);
             
 
-            if (me.clientCanEmit(credentials)) {
+           
                 socket.on('emit', function(msg, emitCallback) {
 
-                    if(!emitCallback){
-                        emitCallback=function(){}
+                    var messageCredentials=me.messageCredentials(msg);
+
+                    if (me.clientCanEmit(messageCredentials||credentials)) {
+
+                        if(!emitCallback){
+                            emitCallback=function(){}
+                        }
+
+                        io.in(appId + '/' + namespace + '/' + msg.channel).clients(function(err, list){
+                            io.in('admin').emit('admin/emit', extend({
+                                'subscribers':list
+                            }, msg, user));
+                        });
+
+                        io.in(appId + '/' + namespace + '/' + msg.channel).emit(msg.channel, msg.data);
+                        emitCallback(true);
+
+
+                    }else{
+                        emitCallback(false);
                     }
-
-                    io.in(appId + '/' + namespace + '/' + msg.channel).clients(function(err, list){
-                        io.in('admin').emit('admin/emit', extend({
-                            'subscribers':list
-                        }, msg, user));
-                    });
-
-                    io.in(appId + '/' + namespace + '/' + msg.channel).emit(msg.channel, msg.data);
-                    emitCallback(true);
                     
                 });
 
+
+
+                if (me.clientCanEmit(credentials)) {
 
                 socket.on('presence', function(msg, emitCallback){
                      if(!emitCallback){
@@ -516,6 +528,13 @@ function SIOServer() {
     me.isValidApp = function(credentials) {
         return (credentials.appId);
     };
+
+    me.messageCredentials=function(msg){
+        if(message.credentials){
+            return message.credentials;
+        }
+        return false;
+    }
 
     me.clientCanEmit = function(credentials) {
 
