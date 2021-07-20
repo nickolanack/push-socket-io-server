@@ -1,8 +1,7 @@
-
 var extend = function(a, b) {
 
 
-    Array.prototype.slice.call(arguments, 1).forEach(function(b){
+    Array.prototype.slice.call(arguments, 1).forEach(function(b) {
         b = b || {};
         Object.keys(b).forEach(function(k) {
             a[k] = b[k];
@@ -36,168 +35,173 @@ function SIOServer() {
         var fs = require('fs');
 
 
-        fs.readFile(__dirname + '/admin.html', function(err, data){
+        fs.readFile(__dirname + '/admin.html', function(err, data) {
 
-            if(err){
-                console.log('error:'+err);
+            if (err) {
+                console.log('error:' + err);
                 return;
             }
 
-           
+
             var template = twig({
                 data: data.toString()
             });
 
 
-            fs.readFile(__dirname + '/appdata/admin.json', function(err, data){
-                if(err){
-                    console.log('error:'+err);
+            fs.readFile(__dirname + '/appdata/admin.json', function(err, data) {
+                if (err) {
+                    console.log('error:' + err);
                     return;
                 }
                 var out = template.render(JSON.parse(data.toString()));
                 res.send(out);
             });
 
-            
+
 
         })
-        
+
 
     });
 
-    
+
     io.on('connection', function(socket) {
 
-        console.log('socket: '+socket.request.headers['x-forwarded-for']);
+        console.log('socket: ' + socket.request.headers['x-forwarded-for']);
         socket.once('authenticate', function(credentials, authCallback) {
 
 
-            if(!authCallback){
-                authCallback=function(){}
+            if (!authCallback) {
+                authCallback = function() {}
             }
 
-            var user={
-                user:credentials.username||"guest",
-                socket:socket.id,
-                ip:socket.request.headers['x-forwarded-for']
+            var user = {
+                user: credentials.username || "guest",
+                socket: socket.id,
+                ip: socket.request.headers['x-forwarded-for']
             }
 
 
             if (me.clientCanMonitorAdmin(credentials)) {
-                socket.join('admin', function(){
+                socket.join('admin', function() {
                     me._addAdminListeners(socket, user);
                 });
-                console.log('admin join: '+JSON.stringify(user));
+                console.log('admin join: ' + JSON.stringify(user));
                 if (!me.isValidApp(credentials)) {
                     authCallback(true);
                     return;
                 }
                 socket.on('disconnect', function() {
-                    console.log('admin disconnect '+JSON.stringify(user));
+                    console.log('admin disconnect ' + JSON.stringify(user));
                 });
             }
 
 
             if (!me.isValidApp(credentials)) {
-                console.log('Invalid');
-                if(credentials.password){
-                    credentials.password=credentials.password[0]+"xxxxx...";
+                console.log('Invalid: '+JSON.stringify(credentials));
+                if (credentials.password) {
+                    credentials.password = credentials.password[0] + "xxxxx...";
                 }
                 io.in('admin').emit('admin/error', 'Invalid app: [' + JSON.stringify(credentials) + ']');
                 authCallback(false);
                 return;
             }
 
-           authCallback(true);
+            authCallback(true);
 
 
             var namespace = credentials.namespace || 'default';
             var appId = credentials.appId || 'default';
 
-            var appInfo=me.getAppInfo(credentials);
+            var appInfo = me.getAppInfo(credentials);
 
             extend(user, appInfo);
             me.addUser(socket, user);
-            
 
-           
-                socket.on('emit', function(msg, emitCallback) {
+            socket.on('whomai', function(msg, callback) {
+                callback(socket.id)
+            });
 
-                    var messageCredentials=me.messageCredentials(msg);
-
-                    if (me.clientCanEmit(messageCredentials||credentials)) {
-
-                        if(!emitCallback){
-                            emitCallback=function(){}
-                        }
-
-                        io.in(appId + '/' + namespace + '/' + msg.channel).clients(function(err, list){
-                            io.in('admin').emit('admin/emit', extend({
-                                'subscribers':list
-                            }, msg, user));
-                        });
-
-                        io.in(appId + '/' + namespace + '/' + msg.channel).emit(msg.channel, msg.data);
-                        emitCallback(true);
-
-
-                    }else{
-                        emitCallback(false);
+            socket.on('emit', function(msg, emitCallback) {
+                if (!emitCallback) {
+                        emitCallback = function() {}
                     }
+
+                var messageCredentials = me.messageCredentials(msg);
+
+                if (me.clientCanEmit(messageCredentials || credentials)) {
+
                     
-                });
+
+                    io.in(appId + '/' + namespace + '/' + msg.channel).clients(function(err, list) {
+                        io.in('admin').emit('admin/emit', extend({
+                            'subscribers': list
+                        }, msg, user));
+                    });
+
+                    io.in(appId + '/' + namespace + '/' + msg.channel).emit(msg.channel, msg.data);
+                    emitCallback(true);
+
+
+                } else {
+                    emitCallback(false);
+                }
+
+            });
 
 
 
-                if (me.clientCanEmit(credentials)) {
+            if (me.clientCanEmit(credentials)) {
 
-                socket.on('presence', function(msg, emitCallback){
-                     if(!emitCallback){
-                        emitCallback=function(){}
+                socket.on('presence', function(msg, emitCallback) {
+                    if (!emitCallback) {
+                        emitCallback = function() {}
                     }
 
 
-                    if((!msg.channel)&&msg.channels){
-                      
+                    if ((!msg.channel) && msg.channels) {
 
-                        var listPresence=[];
-                        var getChannelPresence=function(channels, then){
 
-                            var temp=channels.slice(0);
-                            if(!temp.length){
+                        var listPresence = [];
+                        var getChannelPresence = function(channels, then) {
+
+                            var temp = channels.slice(0);
+                            if (!temp.length) {
                                 then(listPresence);
                                 return;
                             }
 
-                            io.in(appId + '/' + namespace + '/' + channels[0]).clients(function(err, list){
-                                var users=list.map(function(u){return me.getUserInfo(u); });
+                            io.in(appId + '/' + namespace + '/' + channels[0]).clients(function(err, list) {
+                                var users = list.map(function(u) {
+                                    return me.getUserInfo(u);
+                                });
 
                                 listPresence.push({
-                                    'channel':channels[0],
-                                    'presence':users
+                                    'channel': channels[0],
+                                    'presence': users
                                 });
-                                
+
                                 getChannelPresence(channels.slice(1), then);
 
                             });
                         };
 
-                        getChannelPresence(msg.channels.slice(0), function(list){
+                        getChannelPresence(msg.channels.slice(0), function(list) {
 
 
                             io.in('admin').emit('admin/emit', extend({
-                               'channels':msg.channels,
-                               'presence':list
+                                'channels': msg.channels,
+                                'presence': list
                             }, msg, user));
 
-                             socket.emit('presence', {
-                               'channels':msg.channels,
-                               'presence':list
+                            socket.emit('presence', {
+                                'channels': msg.channels,
+                                'presence': list
                             });
 
                             emitCallback({
-                                'channels':msg.channels,
-                               'presence':list
+                                'channels': msg.channels,
+                                'presence': list
                             });
 
 
@@ -209,52 +213,49 @@ function SIOServer() {
                     }
 
 
-                    io.in(appId + '/' + namespace + '/' + msg.channel).clients(function(err, list){
+                    io.in(appId + '/' + namespace + '/' + msg.channel).clients(function(err, list) {
 
-                        var users=list.map(function(u){return me.getUserInfo(u); });
+                        var users = list.map(function(u) {
+                            return me.getUserInfo(u);
+                        });
 
                         io.in('admin').emit('admin/emit', extend({
-                           'channel':appId + '/' + namespace + '/' + msg.channel,
-                           'presence':users
+                            'channel': appId + '/' + namespace + '/' + msg.channel,
+                            'presence': users
                         }, msg, user));
 
-                         socket.emit('presence', {
-                            channel:appId + '/' + namespace + '/' + msg.channel,
-                            presence:users
+                        socket.emit('presence', {
+                            channel: appId + '/' + namespace + '/' + msg.channel,
+                            presence: users
                         });
 
                         emitCallback({
-                            channel:appId + '/' + namespace + '/' + msg.channel,
-                            presence:users
+                            channel: appId + '/' + namespace + '/' + msg.channel,
+                            presence: users
                         });
 
                     });
 
-                   
 
 
-
-                   
                 })
 
 
 
             }
 
-            
+
 
             socket.on('subscribe', function(channel) {
 
-                if((["admin/connect", "admin/disconnect", "admin/join", "admin/leave", "admin/error" , "admin/presence", "admin/emit",]).indexOf(channel)>=0){
+                if ((["admin/connect", "admin/disconnect", "admin/join", "admin/leave", "admin/error", "admin/presence", "admin/emit", ]).indexOf(channel) >= 0) {
                     return;
                 }
 
 
-               
 
-
-                console.log('channel join: '+appId + '/' + namespace + '/' + channel+': '+JSON.stringify(user));
-                socket.join(appId + '/' + namespace + '/' + channel, function(){
+                console.log('channel join: ' + appId + '/' + namespace + '/' + channel + ': ' + JSON.stringify(user));
+                socket.join(appId + '/' + namespace + '/' + channel, function() {
 
                     io.in('admin').emit('admin/join', extend({
                         channel: channel
@@ -262,43 +263,40 @@ function SIOServer() {
 
 
                     me._updateUsersRooms(socket);
-                    console.log('join: '+appId + '/' + namespace + '/' + channel);
+                    console.log('join: ' + appId + '/' + namespace + '/' + channel);
                     console.log(JSON.stringify(socket.rooms));
 
-                    if(channel.indexOf('.presence')<0){
-                        io.in(appId + '/' + namespace + '/' + channel).clients(function(err, list){
-                            io.in(appId + '/' + namespace + '/' + channel+".presence").emit(channel+'.presence', {
-                                list:list,
-                                channel:channel,
-                                added:user
+                    if (channel.indexOf('.presence') < 0) {
+                        io.in(appId + '/' + namespace + '/' + channel).clients(function(err, list) {
+                            io.in(appId + '/' + namespace + '/' + channel + ".presence").emit(channel + '.presence', {
+                                list: list,
+                                channel: channel,
+                                added: user
                             });
                             io.in('admin').emit('admin/presence', extend({
-                                list:list,      
-                                channel:channel,
-                                added:user
+                                list: list,
+                                channel: channel,
+                                added: user
                             }, appInfo));
                         });
-                       
+
                     }
 
                 });
-                
+
 
 
             });
 
             socket.on('unsubscribe', function(channel) {
 
-                if((["admin/connect", "admin/disconnect", "admin/join", "admin/leave", "admin/error", "admin/presence", , "admin/presence", "admin/emit",]).indexOf(channel)>=0){
+                if ((["admin/connect", "admin/disconnect", "admin/join", "admin/leave", "admin/error", "admin/presence", , "admin/presence", "admin/emit", ]).indexOf(channel) >= 0) {
                     return;
                 }
 
 
-               
 
-
-
-                socket.leave(appId + '/' + namespace + '/' + channel, function(){
+                socket.leave(appId + '/' + namespace + '/' + channel, function() {
 
                     io.in('admin').emit('admin/leave', extend({
                         channel: appId + '/' + namespace + '/' + channel
@@ -306,72 +304,71 @@ function SIOServer() {
 
 
                     me._updateUsersRooms(socket);
-                    console.log('left: '+appId + '/' + namespace + '/' + channel);
+                    console.log('left: ' + appId + '/' + namespace + '/' + channel);
                     console.log(JSON.stringify(socket.rooms));
 
-                    if(channel.indexOf('.presence')<0){
-                        io.in(appId + '/' + namespace + '/' + channel).clients(function(err, list){
-                            io.in(appId + '/' + namespace + '/' + channel+".presence").emit(channel+'.presence', {
-                                list:list,
-                                channel:channel,
-                                removed:user
+                    if (channel.indexOf('.presence') < 0) {
+                        io.in(appId + '/' + namespace + '/' + channel).clients(function(err, list) {
+                            io.in(appId + '/' + namespace + '/' + channel + ".presence").emit(channel + '.presence', {
+                                list: list,
+                                channel: channel,
+                                removed: user
                             });
                             io.in('admin').emit('admin/presence', extend({
-                                list:list,
-                                channel:channel,
-                                removed:user
+                                list: list,
+                                channel: channel,
+                                removed: user
                             }, appInfo));
                         });
-                       
+
                     }
 
                 });
-                
+
 
 
             });
 
 
 
-
-           //administrators:
-
+            //administrators:
 
 
-            socket.once('subscribe', function(){
+
+            socket.once('subscribe', function() {
 
                 io.in('admin').emit('admin/connect', user);
 
                 socket.on('disconnect', function() {
                     io.in('admin').emit('admin/disconnect', user);
-                    var filteredRooms=me.getUserRooms(socket).filter(function(channelPath){
-                        return channelPath.indexOf('.presence')<0&&channelPath.indexOf(appId + '/' + namespace)===0;
+                    var filteredRooms = me.getUserRooms(socket).filter(function(channelPath) {
+                        return channelPath.indexOf('.presence') < 0 && channelPath.indexOf(appId + '/' + namespace) === 0;
                     });
-                    filteredRooms.forEach(function(channelPath){
+                    filteredRooms.forEach(function(channelPath) {
 
 
-                        
-                            var channel=channelPath.replace(appId + '/' + namespace+'/','');
-                            io.in(channelPath).clients(function(err, list){
-                                io.in(channelPath+".presence").emit(channel+'.presence', {
-                                    list:list,
-                                    channel:channel,
-                                    removed:user
-                                });
-                                io.in('admin').emit('admin/presence', extend({
-                                    list:list,
-                                    channel: channel,
-                                    removed:user,
-                                    usersChannels:filteredRooms
-                                }, appInfo));
+
+                        var channel = channelPath.replace(appId + '/' + namespace + '/', '');
+                        io.in(channelPath).clients(function(err, list) {
+                            io.in(channelPath + ".presence").emit(channel + '.presence', {
+                                list: list,
+                                channel: channel,
+                                removed: user
                             });
-                           
-                        
+                            io.in('admin').emit('admin/presence', extend({
+                                list: list,
+                                channel: channel,
+                                removed: user,
+                                usersChannels: filteredRooms
+                            }, appInfo));
+                        });
+
+
                     });
                 });
             });
 
-            
+
 
         });
 
@@ -380,18 +377,18 @@ function SIOServer() {
     });
 
 
-    me.addUser=function(socket, user){
+    me.addUser = function(socket, user) {
 
 
-        if(!me._users){
-            me._users={};
+        if (!me._users) {
+            me._users = {};
         }
 
-        if(me._users[socket.id]){
+        if (me._users[socket.id]) {
             return;
         }
 
-        me._users[socket.id]=user;
+        me._users[socket.id] = user;
 
         socket.on('disconnect', function() {
             delete me._users[socket.id];
@@ -400,36 +397,35 @@ function SIOServer() {
     }
 
 
-    me._updateUsersRooms=function(socket){
+    me._updateUsersRooms = function(socket) {
 
 
-        var id=socket.id;
-        if(!me._rooms){
-            me._rooms={};
+        var id = socket.id;
+        if (!me._rooms) {
+            me._rooms = {};
 
             socket.on('disconnect', function() {
-                setTimeout(function(){
+                setTimeout(function() {
                     delete me._rooms[id];
                 }, 500);
             });
         }
 
-        me._rooms[id]=Object.keys(socket.rooms);
+        me._rooms[id] = Object.keys(socket.rooms);
 
 
-        
 
     }
 
-    me.getUserRooms=function(socket){
+    me.getUserRooms = function(socket) {
 
-        var id=socket.id||socket;
+        var id = socket.id || socket;
 
-        if(!me._rooms){
-           return [];
+        if (!me._rooms) {
+            return [];
         }
 
-        if(!me._rooms[id]){
+        if (!me._rooms[id]) {
             return [];
         }
         return me._rooms[id];
@@ -437,15 +433,15 @@ function SIOServer() {
     }
 
 
-    me.getUserInfo=function(socket){
+    me.getUserInfo = function(socket) {
 
-        var id=socket.id||socket;
+        var id = socket.id || socket;
 
-        if(!me._users){
+        if (!me._users) {
             return {};
         }
 
-        if(!me._users[id]){
+        if (!me._users[id]) {
             return {};
         }
 
@@ -453,69 +449,69 @@ function SIOServer() {
     }
 
 
-    me.getAppInfo=function(credentials){
+    me.getAppInfo = function(credentials) {
 
         var fs = require('fs');
-        var appDataFile=__dirname+'/appdata/'+credentials.appId+'.json';
-        if(!(credentials.appId&&fs.existsSync(appDataFile))){
+        var appDataFile = __dirname + '/appdata/' + credentials.appId + '.json';
+        if (!(credentials.appId && fs.existsSync(appDataFile))) {
             return {
 
-                "namespace" : credentials.namespace || 'default',
-                "appId" : credentials.appId || 'default',
-                "project":"invalid"
+                "namespace": credentials.namespace || 'default',
+                "appId": credentials.appId || 'default',
+                "project": "invalid"
 
             };
         }
 
-        var appData=JSON.parse(fs.readFileSync(appDataFile));
+        var appData = JSON.parse(fs.readFileSync(appDataFile));
 
         return {
 
-            "namespace" : credentials.namespace || 'default',
-            "appId" : credentials.appId || 'default',
-            "project":appData.project||(credentials.appId+".json")
+            "namespace": credentials.namespace || 'default',
+            "appId": credentials.appId || 'default',
+            "project": appData.project || (credentials.appId + ".json")
 
         };
     }
 
-    me._addAdminListeners=function(socket){
+    me._addAdminListeners = function(socket) {
 
         /**
          * add admin functions, only channel members of `admin` can access
          */
 
-        socket.on('client-list', function(args, callback){
-            io.sockets.clients(function(err, list){
+        socket.on('client-list', function(args, callback) {
+            io.sockets.clients(function(err, list) {
 
-                if(err){
+                if (err) {
                     callback(err);
                     return;
                 }
 
-                callback(list.map(function(socket){
+                callback(list.map(function(socket) {
                     return extend({
-                        'channels':me.getUserRooms(socket)
+                        'channels': me.getUserRooms(socket)
                     }, me.getUserInfo(socket))
                 }));
             })
-        }); 
+        });
 
-        socket.on('app-list', function(args, callback){
-            io.sockets.clients(function(err, list){
+        socket.on('app-list', function(args, callback) {
+            io.sockets.clients(function(err, list) {
 
-                if(err){
+                if (err) {
                     callback(err);
                     return;
                 }
 
-                callback(list.map(function(socket){
-                    var info=me.getUserInfo(socket);
-                    return info.appId+" "+info.project;
-                }).filter(function(value, index, array){
-                    return array.indexOf(value)===index;
+                callback(list.map(function(socket) {
+                    var info = me.getUserInfo(socket);
+                    return info.appId + " " + info.project;
+                }).filter(function(value, index, array) {
+                    return array.indexOf(value) === index;
                 }));
             })
-        });      
+        });
     };
 
 
@@ -529,9 +525,10 @@ function SIOServer() {
         return (credentials.appId);
     };
 
-    me.messageCredentials=function(msg){
-        if(message.credentials){
-            return message.credentials;
+    me.messageCredentials = function(msg) {
+        if (msg.credentials) {
+            console.log('using message credentials: '+JSON.stringify(msg.credentials));
+            return msg.credentials;
         }
         return false;
     }
@@ -539,18 +536,18 @@ function SIOServer() {
     me.clientCanEmit = function(credentials) {
 
         var fs = require('fs');
-        var appDataFile=__dirname+'/appdata/'+credentials.appId+'.json';
-        if(!(credentials.appId&&fs.existsSync(appDataFile))){
+        var appDataFile = __dirname + '/appdata/' + credentials.appId + '.json';
+        if (!(credentials.appId && fs.existsSync(appDataFile))) {
             return false;
         }
 
-        var appData=JSON.parse(fs.readFileSync(appDataFile));
+        var appData = JSON.parse(fs.readFileSync(appDataFile));
 
         if (credentials.username === appData.username && credentials.password === appData.password) {
             return true;
         }
 
-        if (credentials.apiKey ==appData.apiKey) {
+        if (credentials.apiKey == appData.apiKey) {
             return true;
         }
 
@@ -561,12 +558,12 @@ function SIOServer() {
     me.clientCanMonitorAdmin = function(credentials) {
 
         var fs = require('fs');
-        var adminDataFile=__dirname+'/appdata/admin.json';
-        if(!fs.existsSync(adminDataFile)){
+        var adminDataFile = __dirname + '/appdata/admin.json';
+        if (!fs.existsSync(adminDataFile)) {
             return false;
         }
 
-        var adminData=JSON.parse(fs.readFileSync(adminDataFile));
+        var adminData = JSON.parse(fs.readFileSync(adminDataFile));
 
         if (credentials.username === adminData.username && credentials.password === adminData.password) {
             return true;
