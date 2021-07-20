@@ -249,9 +249,10 @@ function SIOServer() {
 
 
 
-            socket.on('subscribe', function(channel) {
+            socket.on('subscribe', function(channel, emitCallback) {
 
                 if ((["admin/connect", "admin/disconnect", "admin/join", "admin/leave", "admin/error", "admin/presence", "admin/emit", ]).indexOf(channel) >= 0) {
+                    emitCallback(false);
                     return;
                 }
 
@@ -285,15 +286,19 @@ function SIOServer() {
 
                     }
 
+                    emitCallback(true);
+
                 });
 
 
 
             });
 
-            socket.on('unsubscribe', function(channel) {
+            socket.on('unsubscribe', function(channel, emitCallback) {
 
                 if ((["admin/connect", "admin/disconnect", "admin/join", "admin/leave", "admin/error", "admin/presence", , "admin/presence", "admin/emit", ]).indexOf(channel) >= 0) {
+                    
+                    emitCallback(false);
                     return;
                 }
 
@@ -325,6 +330,8 @@ function SIOServer() {
                         });
 
                     }
+
+                    emitCallback(true);
 
                 });
 
@@ -374,8 +381,6 @@ function SIOServer() {
 
 
         });
-
-
 
     });
 
