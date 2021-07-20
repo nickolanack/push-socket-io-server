@@ -98,10 +98,13 @@ function SIOServer() {
 
 
             if (!me.isValidApp(credentials)) {
-                console.log('Invalid: '+JSON.stringify(credentials));
+                
                 if (credentials.password) {
                     credentials.password = credentials.password[0] + "xxxxx...";
                 }
+
+                console.log('Invalid: '+JSON.stringify(credentials));
+
                 io.in('admin').emit('admin/error', 'Invalid app: [' + JSON.stringify(credentials) + ']');
                 authCallback(false);
                 return;
