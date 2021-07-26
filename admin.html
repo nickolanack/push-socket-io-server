@@ -2,7 +2,13 @@
 <html>
     <head>
         <title>Message Server</title>
+
+        <link rel="stylesheet" type="text/css" href="/public/font-awesome-4.7.0/css/font-awesome.min.css">
         <style>
+
+        
+
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font: 13px Helvetica, Arial; }
         #messages { list-style-type: none; margin: 0; padding: 0; }
@@ -71,9 +77,106 @@
             content: "hide";
         }
 
+
+        .paused li.pause-btn > button {
+            background: #bdbdbd;
+            border-color: gray;
+            box-shadow: none;
+        }
+
+        .running .run-btn button {
+            background-color: #3072e8;
+            color: white;
+            border-color: #194390;
+            box-shadow: none;
+        }
+
+
+
+        .run-btn button:after, .pause-btn button:after, .clear-btn button:after{
+            content: "\0f04b";
+            font-family: 'FontAwesome';
+            margin-left: 2px;
+            font-size: 12px;
+        }
+
+        .pause-btn button:after {
+            content: "\0f04c";
+            margin-left:0;
+        }
+
+        .clear-btn button:after{
+            content: "\0f021";
+        }
+
+        .run-btn button, .pause-btn button, .clear-btn button{ 
+            font-size: 0;
+        }
+
+
+
+
+
+
+
+        ul#menu {
+            background-color: #dedfe0;
+            font-family: inherit;
+            padding: 5px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            box-shadow: 0 0 5px rgb(0 0 0 / 50%);
+        }
+
+        ul#messages {
+            margin-top: 47px;
+        }
+
+
+        li.btn-toggle button {
+            background: none;
+            border: none;
+            box-shadow: none;
+        }
+
+        li.btn-toggle button:before {
+            content: "\0f096";
+            font-family: 'FontAwesome';
+            margin-right: 4px;
+            color: black;
+            font-size: 15px;
+            vertical-align: top;
+        }
+
+
+
+        li.btn-toggle.active button:before {
+            content: "\0f14a";
+            color: #3072e8;
+        }
+
+        li.btn-toggle:after {
+            content: attr(data-count);
+            position: absolute;
+            right: 10px;
+            bottom: -4px;
+            font-size: 10px;
+            background: #bbbbbb;
+            padding: 1px 4px;
+            min-width: 15px;
+            text-align: center;
+            border-radius: 5px;
+        }
+
+        li.btn-toggle {
+            position: relative;
+        }
+
         </style>
     </head>
-    <body>
+    <body class="running">
     <ul id="menu"></ul>
     <ul id="messages"></ul>
     <script src="https://d2kywj9k786klm.cloudfront.net/client.js"></script>
@@ -91,7 +194,11 @@
                 var maxShow=100;
 
 
-                var addButton=function(name, fn){
+                var addButton=function(name, className, fn){
+
+                  if(typeof className=="function"){
+                    fn=className;
+                  }
 
                   var li=document.createElement("li");
                   var btn=document.createElement("button");
@@ -99,8 +206,66 @@
                   btn.onclick=fn;
                   btn.innerHTML=name;
                   document.getElementById('menu').appendChild(li); 
+
+                  if(typeof className=="string"){
+                    addClass(li, className);
+                  }
+
+                  return li;
                 };
 
+
+                var _puased=false;
+
+
+                var displayEvents=['admin/emit', 'admin/error'];
+
+
+                var checkFilters=function(obj){
+                    //TODO: add filters
+                    return true;
+                }
+
+                var insertSubEvent=function(obj){
+
+
+                    computeStats(obj);
+
+                    if(_puased){
+                        return;
+                    }
+
+                    if(displayEvents.indexOf(obj.channel)==-1){
+                        return;
+                    }
+
+
+                    if(!checkFilters(obj)){
+                        return;
+                    }
+
+                    insert(obj.html, obj["class"]);
+
+                }
+
+                var counters={};
+
+                var computeStats=function(obj){
+
+                    if(typeof counters[obj.channel]=="undefined"){
+                        counters[obj.channel]=0;
+                    }
+
+                    counters[obj.channel]++;
+
+
+                    if(typeof counters[obj.channel+'_el']!="undefined"){
+                        var fmtNum=counters[obj.channel];
+                        counters[obj.channel+'_el'].setAttribute('data-count', counters[obj.channel]);
+                    }
+
+
+                };
 
                 var insert=function(string, className){
 
@@ -123,6 +288,33 @@
                       
 
                 }
+
+                var append=function(string, className){
+
+                    var li=document.createElement("li");
+                    li.innerHTML=replacements(string);
+                    addClass(li, className);
+                    document.getElementById('messages').appendChild(li);
+                    events(li);
+                    limit();
+
+                };
+
+
+                var pause=function(){
+                    _puased=true;
+                    removeClass(document.body, 'running');
+                    addClass(document.body, 'paused');
+
+                }
+
+                var run=function(){
+                    _puased=false;
+                    addClass(document.body, 'running');
+                    removeClass(document.body, 'paused');
+                }
+
+
 
                 var hasClass=function(el, className){
                     return (el.className||"").split(" ").indexOf(className)>=0;
@@ -175,17 +367,7 @@
 
                 }
 
-                var append=function(string, className){
-
-                    var li=document.createElement("li");
-                    li.innerHTML=replacements(string);
-                    addClass(li, className);
-                    document.getElementById('messages').appendChild(li);
-                    events(li);
-                    limit();
-
-                };
-
+                
                 var nameof=function(channel, msg){
                     if(channel=="admin/presence"){
                         key=msg['added']?'added':'removed';
@@ -225,15 +407,20 @@
                 //     append(c+" user"+(c==1?"":"s")+" in: `chat{message}`");
                 // });
 
-
-                (['admin/emit', 'admin/connect', 'admin/presence', 'admin/disconnect', 'admin/error', 'admin/join', 'admin/leave']).forEach(function(adminChannel) {
+                var adminEvents=['admin/emit', 'admin/connect', 'admin/presence', 'admin/disconnect', 'admin/error', 'admin/join', 'admin/leave'];
+                (adminEvents).forEach(function(adminChannel) {
                     client.subscribe(adminChannel, function(msg) {
-                        insert('<h3><span class="admin-channel">'+adminChannel + '</span><span class="event">'+nameof(adminChannel, msg) + '</span>:</h3> <pre class="'+preStyle(adminChannel, msg)+'">' + stringify(msg)+"</pre>", adminChannel.split('/').pop());
+                        insertSubEvent({
+                            "html":'<h3><span class="admin-channel">'+adminChannel + '</span><span class="event">'+nameof(adminChannel, msg) + '</span>:</h3> <pre class="'+preStyle(adminChannel, msg)+'">' + stringify(msg)+"</pre>", 
+                            "class":adminChannel.split('/').pop(), 
+                            "channel":adminChannel,
+                            "data":msg
+                        });
                     });
                 });
 
 
-                addButton('ListClients', function(){
+                addButton('List Users', function(){
                     client.send('client-list', {}, function(list){
                          insert("<h3>List clients: </h3> <pre>" + stringify(list)+"</pre>");
                     });
@@ -243,10 +430,17 @@
                          insert("<h3>List apps: </h3> <pre>" + stringify(list)+"</pre>");
                     });
                 });
-                addButton('Clear', function(){
+                addButton('Clear', 'clear-btn', function(){
                     client.send('app-list', {}, function(list){
                         document.getElementById('messages').innerHTML="";
                     });
+                });
+
+                addButton('Pause', 'pause-btn', function(){
+                    pause();
+                });
+                addButton('Run', 'run-btn', function(){
+                    run();
                 });
 
                 addButton('10', function(){
@@ -261,6 +455,37 @@
                     show=100;
                     limit();
                 });
+
+
+                (adminEvents).forEach(function(adminChannel) {
+
+
+                    var name=adminChannel.split('/').pop();
+
+
+                    var btn=addButton(name[0].toUpperCase()+name.substring(1), 'btn-toggle', function(){
+
+                        var i=displayEvents.indexOf(adminChannel)
+                        if(i>=0){
+                            displayEvents.splice(i,1);
+                            removeClass(btn, "active");
+                            return;
+                        }
+                        displayEvents.push(adminChannel);
+                        addClass(btn, "active");
+
+                    });
+
+                    if(displayEvents.indexOf(adminChannel)!=-1){
+                        addClass(btn, "active");
+                    }
+
+
+                    counters[adminChannel+'_el']=btn;
+
+                });
+               
+
 
                 var events=function(li){
                     li.onclick=function(e){
@@ -373,8 +598,6 @@
                     });
 
                     return out;
-
-
 
                 }
 

@@ -16,8 +16,8 @@ function SIOServer() {
 
 
     var me = this;
-
-    var app = require('express')();
+    var express=require('express');
+    var app = express();
     var http = require('http').Server(app);
     var io = require('socket.io')(http);
 
@@ -27,6 +27,8 @@ function SIOServer() {
     app.get('/client.js', function(req, res) {
         res.sendFile(__dirname + '/client.js');
     });
+    app.use('/public', express.static(__dirname + '/public'));
+    
     app.get('/admin', function(req, res) {
 
         var Twig = require('twig');
@@ -127,8 +129,10 @@ function SIOServer() {
 
             socket.on('emit', function(msg, emitCallback) {
                 if (!emitCallback) {
-                        emitCallback = function() {}
-                    }
+                    emitCallback = function() {}
+                }
+
+                console.log('emit '+socket.request.headers['x-forwarded-for']);
 
                 var messageCredentials = me.messageCredentials(msg);
 
@@ -192,16 +196,19 @@ function SIOServer() {
                         getChannelPresence(msg.channels.slice(0), function(list) {
 
 
-                            io.in('admin').emit('admin/emit', extend({
+                            io.in('admin').emit('admin/request', extend({
                                 'channels': msg.channels,
                                 'presence': list
                             }, msg, user));
 
+
+                            // is this necessary? callback below might be enough
                             socket.emit('presence', {
                                 'channels': msg.channels,
                                 'presence': list
                             });
 
+                            //is callback enough?
                             emitCallback({
                                 'channels': msg.channels,
                                 'presence': list
@@ -222,11 +229,13 @@ function SIOServer() {
                             return me.getUserInfo(u);
                         });
 
-                        io.in('admin').emit('admin/emit', extend({
+                        io.in('admin').emit('admin/request', extend({
                             'channel': appId + '/' + namespace + '/' + msg.channel,
                             'presence': users
                         }, msg, user));
 
+
+                        // is this necessary? callback below might be enough
                         socket.emit('presence', {
                             channel: appId + '/' + namespace + '/' + msg.channel,
                             presence: users
@@ -251,7 +260,15 @@ function SIOServer() {
 
             socket.on('subscribe', function(channel, emitCallback) {
 
-                if ((["admin/connect", "admin/disconnect", "admin/join", "admin/leave", "admin/error", "admin/presence", "admin/emit", ]).indexOf(channel) >= 0) {
+                if(typeof channel.channel=="string"){
+                    channel=channel.channel;
+                }
+
+                if (!emitCallback) {
+                    emitCallback = function() {}
+                }
+
+                if ((["admin/connect", "admin/disconnect", "admin/join", "admin/leave", "admin/error", "admin/presence", "admin/emit", "admin/request"]).indexOf(channel) >= 0) {
                     emitCallback(false);
                     return;
                 }
@@ -296,7 +313,11 @@ function SIOServer() {
 
             socket.on('unsubscribe', function(channel, emitCallback) {
 
-                if ((["admin/connect", "admin/disconnect", "admin/join", "admin/leave", "admin/error", "admin/presence", , "admin/presence", "admin/emit", ]).indexOf(channel) >= 0) {
+                if (!emitCallback) {
+                    emitCallback = function() {}
+                }
+
+                if ((["admin/connect", "admin/disconnect", "admin/join", "admin/leave", "admin/error", "admin/presence", , "admin/presence", "admin/emit", "admin/request"]).indexOf(channel) >= 0) {
                     
                     emitCallback(false);
                     return;
