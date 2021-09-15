@@ -218,7 +218,7 @@
                 var _puased=false;
 
 
-                var displayEvents=['admin/emit', 'admin/error'];
+                var displayEvents=['admin/emit', 'admin/error', 'admin/request'];
 
 
                 var checkFilters=function(obj){
@@ -399,15 +399,25 @@
                     }
                 });
 
-
-                var client=(new SocketIOClient('https://socketio.nickolanack.com')).connect(credentials);
+                //'https://socketio.nickolanack.com'
+                var client=(new SocketIOClient('localhost:8090')).connect(credentials);
                     
                 // client.presence('chat', 'message', function(msg) {
                 //     var c=msg.list.length;
                 //     append(c+" user"+(c==1?"":"s")+" in: `chat{message}`");
                 // });
 
-                var adminEvents=['admin/emit', 'admin/connect', 'admin/presence', 'admin/disconnect', 'admin/error', 'admin/join', 'admin/leave'];
+                var adminEvents=[
+
+                    'admin/emit', 
+                    'admin/connect', 
+                    'admin/presence', 
+                    'admin/disconnect', 
+                    'admin/error', 
+                    'admin/join', 
+                    'admin/leave',
+                    'admin/request'
+                ];
                 (adminEvents).forEach(function(adminChannel) {
                     client.subscribe(adminChannel, function(msg) {
                         insertSubEvent({

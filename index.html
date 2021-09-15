@@ -31,8 +31,8 @@
 
                 };
 
-                
-                var client=(new SocketIOClient('https://socketio.nickolanack.com'))
+                'https://socketio.nickolanack.com'
+                var client=(new SocketIOClient('localhost:8090'))
                     .connect(credentials);
                     
                 client.presence('chat', 'message', function(msg) {
