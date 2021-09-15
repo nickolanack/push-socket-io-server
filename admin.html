@@ -399,8 +399,7 @@
                     }
                 });
 
-                //'https://socketio.nickolanack.com'
-                var client=(new SocketIOClient('localhost:8090')).connect(credentials);
+                var client=(new SocketIOClient(document.location.origin)).connect(credentials);
                     
                 // client.presence('chat', 'message', function(msg) {
                 //     var c=msg.list.length;
