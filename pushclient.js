@@ -224,31 +224,7 @@ module.exports = class PushClient {
 		if ((!msg.channel) && msg.channels) {
 
 
-			var listPresence = [];
-			var getChannelPresence = (channels, then) => {
-
-				var temp = channels.slice(0);
-				if (!temp.length) {
-					then(listPresence);
-					return;
-				}
-
-				this.io.in(this.prefix + channels[0]).clients((err, list) => {
-					var users = list.map((u) => {
-						return this.pushsocket.getUserInfo(u);
-					});
-
-					listPresence.push({
-						'channel': channels[0],
-						'presence': users
-					});
-
-					getChannelPresence(channels.slice(1), then);
-
-				});
-			};
-
-			getChannelPresence(msg.channels.slice(0), (list) => {
+			this.pushsocket.getPresence(msg.channels.slice(0), (list) => {
 
 
 				this.io.in('admin').emit('admin/request', extend({

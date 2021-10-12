@@ -122,6 +122,37 @@ module.exports = class PushSocket {
 
 	}
 
+	getPresence(channelList, fn){
+
+		var listPresence = [];
+		var getChannelPresence = (channels, then) => {
+
+			var temp = channels.slice(0);
+			if (!temp.length) {
+				then(listPresence);
+				return;
+			}
+
+			this.io.in(this.prefix + channels[0]).clients((err, list) => {
+				var users = list.map((u) => {
+					return this.getUserInfo(u);
+				});
+
+				listPresence.push({
+					'channel': channels[0],
+					'presence': users
+				});
+
+				getChannelPresence(channels.slice(1), then);
+
+			});
+		};
+
+
+		getChannelPresence(channelList.slice(0), fn);
+
+	}
+
 
 	emit(prefix, msg, user, emitCallback) {
 

@@ -6,7 +6,12 @@ function SIOServer() {
  
 
     var express=require('express');
+
+   
+
     var server = express();
+    server.use(express.json());
+    server.use(express.urlencoded({ extended: true }));
 
     var WebConsole=require('./webconsole.js');
     var wconsole=new WebConsole(__dirname, server);
@@ -20,19 +25,21 @@ function SIOServer() {
     var pushsocket=new PushSocket(__dirname, io);
 
 
-    server.get('/emit', function(req, res) {
+    server.post('/emit', function(req, res) {
 
-        var credentials=JSON.parse(req.query.credentials||"{}");
+
+        console.log(req.body);
+
+        var credentials=JSON.parse(req.body.credentials||req.query.credentials||"{}");
 
         
-
 
         if(!pushsocket.clientCanEmit(credentials)){
             res.send(JSON.stringify({
                 "message":"invalid",
                 "code":1,
                 "success":false,
-                "echo":req.query
+                "echo":req.body
             }));
             return;
         }
@@ -42,7 +49,7 @@ function SIOServer() {
                 "message":"invalid",
                 "code":2,
                 "success":false,
-                "echo":req.query
+                "echo":req.body
             }));
             return;
         }
@@ -57,13 +64,13 @@ function SIOServer() {
             ip: req.ips
         }
 
-        var channel=req.query.channel||"";
+        var channel=req.body.channel||req.query.channel||"";
         try{
             channel=JSON.parse(channel)||channel;
         }catch(e){
-            
+
         }
-        var data=JSON.parse(req.query.data||"{}");
+        var data=JSON.parse(req.body.data||req.query.data||"{}");
 
         pushsocket.emit(prefix, {
             "channel":channel,
@@ -73,6 +80,61 @@ function SIOServer() {
                  "success":success
              }));
         });
+    });
+
+    server.post('/presence', function(req, res) {
+
+
+        console.log(req.body);
+
+        var credentials=JSON.parse(req.body.credentials||req.query.credentials||"{}");
+
+        
+
+        if(!pushsocket.clientCanEmit(credentials)){
+            res.send(JSON.stringify({
+                "message":"invalid",
+                "code":1,
+                "success":false,
+                "echo":req.body
+            }));
+            return;
+        }
+
+        if(!pushsocket.isValidApp(credentials)){
+            res.send(JSON.stringify({
+                "message":"invalid",
+                "code":2,
+                "success":false,
+                "echo":req.body
+            }));
+            return;
+        }
+
+        var namespace = credentials.namespace || 'default';
+        var appId = credentials.appId || 'default';
+        var prefix = appId + '/' + namespace + '/';
+
+        var user = {
+            user: credentials.username || "guest",
+            socket: req.ip,
+            ip: req.ips
+        }
+
+        var channels=req.body.channels||req.query.channels||"";
+        try{
+            channels=JSON.parse(channels)||channels;
+        }catch(e){
+
+        }
+        
+        pushsocket.getPresence(channels, (list)=>{
+            res.send(JSON.stringify({
+                'channels': channels,
+                'presence': list
+            }));
+        });
+
     });
 
 
