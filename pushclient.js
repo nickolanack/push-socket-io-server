@@ -227,10 +227,10 @@ module.exports = class PushClient {
 			this.pushsocket.getPresence(msg.channels.slice(0), (list) => {
 
 
-				this.io.in('admin').emit('admin/request', extend({
+				this.io.in('admin').emit('admin/request', extend({}, msg, this.user, {
 					'channels': msg.channels,
 					'presence': list
-				}, msg, this.user));
+				}));
 
 
 				// is this necessary? callback below might be enough
