@@ -25,7 +25,6 @@ module.exports = class PushSocket {
 
 	authorizeSocket(socket, credentials, authCallback) {
 
-
 		if (!authCallback) {
 			authCallback = () => {}
 		}
@@ -122,7 +121,51 @@ module.exports = class PushSocket {
 
 	}
 
-	getPresence(channelList, fn){
+	getPresence(channels, callback){
+
+
+		if(typeof channels=="string"){
+
+			
+
+			this._getPresence([channels], (list)=>{
+
+				var presence={
+	                'channel': channels,
+	                'presence': list.pop().presence,
+	            };
+
+	            callback(presence);
+
+	            this.io.in('admin').emit('admin/request', extend({}, msg, this.user, presence));
+
+	        });
+
+	        
+	        return;
+
+		}
+
+
+		
+
+		this._getPresence(channels, (list)=>{
+
+			var presence={
+	            'channels': channels,
+	            'presence': list,
+	        };
+
+            callback(presence);
+
+            this.io.in('admin').emit('admin/request', extend({}, msg, this.user, presence));
+
+        });
+
+
+	}
+
+	_getPresence(channelList, fn){
 
 		var listPresence = [];
 		var getChannelPresence = (channels, then) => {
@@ -147,7 +190,6 @@ module.exports = class PushSocket {
 
 			});
 		};
-
 
 		getChannelPresence(channelList.slice(0), fn);
 

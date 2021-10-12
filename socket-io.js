@@ -1,5 +1,7 @@
 
 
+const extend = require('./extend.js');
+
 function SIOServer() {
 
 
@@ -136,27 +138,33 @@ function SIOServer() {
 
         }
 
-        if(channels&&!channel){
-        
-            pushsocket.getPresence(channels, (list)=>{
-                res.send(JSON.stringify({
-                    'channels': channels,
-                    'presence': list,
-                    'success':true
-                }));
-            });
 
-            return;
-        }
-
-
-        pushsocket.getPresence([channel], (list)=>{
-            res.send(JSON.stringify({
-                'channel': channel,
-                'presence': list.pop().presence,
-                'success':true
-            }));
+        pushsocket.getPresence(channel||channels, (presence)=>{
+            res.send(JSON.stringify(extend({'success':true}, presence));
         });
+
+
+        // if(channels&&!channel){
+        
+        //     pushsocket.getPresence(channels, (list)=>{
+        //         res.send(JSON.stringify({
+        //             'channels': channels,
+        //             'presence': list,
+        //             'success':true
+        //         }));
+        //     });
+
+        //     return;
+        // }
+
+
+        // pushsocket.getPresence([channel], (list)=>{
+        //     res.send(JSON.stringify({
+        //         'channel': channel,
+        //         'presence': list.pop().presence,
+        //         'success':true
+        //     }));
+        // });
 
 
     });

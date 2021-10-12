@@ -220,64 +220,15 @@ module.exports = class PushClient {
 			emitCallback = () => {}
 		}
 
+		this.pushsocket.getPresence(msg.channel||message.channels, (presence)=>{
 
-		if ((!msg.channel) && msg.channels) {
-
-
-			this.pushsocket.getPresence(msg.channels.slice(0), (list) => {
-
-				this.io.in('admin').emit('admin/request', extend({}, msg, this.user, {
-					'channels': msg.channels,
-					'presence': list
-				}));
-
-
-				// is this necessary? callback below might be enough
-				this.socket.emit('presence', {
-					'channels': msg.channels,
-					'presence': list
-				});
-
-				//is callback enough?
-				emitCallback({
-					'channels': msg.channels,
-					'presence': list
-				});
-			});
-
-
-			return;
-
-		}
-
-
-		this.io.in(this.prefix + msg.channel).clients((err, list) => {
-
-			var users = list.map((u) => {
-				return this.pushsocket.getUserInfo(u);
-			});
-
-			this.io.in('admin').emit('admin/request', extend({}, msg, this.user, {
-				'channel': msg.channel,
-				'presence': users
-			}));
-
-
-			// is this necessary? callback below might be enough
-			this.socket.emit('presence', {
-				channel: msg.channel,
-				presence: users
-			});
-
-			emitCallback({
-				channel: msg.channel,
-				presence: users
-			});
+			emitCallback(presence);
+	        this.socket.emit('presence', presence); //only sent to requestor
+	            
 
 		});
 
-
-
+		
 	}
 
 
