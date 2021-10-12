@@ -127,14 +127,37 @@ function SIOServer() {
         }catch(e){
 
         }
+
+
+        var channel=req.body.channel||req.query.channel||"";
+        try{
+            channel=JSON.parse(channel)||channel;
+        }catch(e){
+
+        }
+
+        if(channels&&!channel){
         
+            pushsocket.getPresence(channels, (list)=>{
+                res.send(JSON.stringify({
+                    'channels': channels,
+                    'presence': list,
+                    'success':true
+                }));
+            });
+
+            return;
+        }
+
+
         pushsocket.getPresence(channels, (list)=>{
             res.send(JSON.stringify({
-                'channels': channels,
-                'presence': list,
+                'channel': channel,
+                'presence': list.pop().presence,
                 'success':true
             }));
         });
+
 
     });
 
