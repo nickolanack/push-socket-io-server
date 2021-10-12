@@ -260,10 +260,10 @@ module.exports = class PushClient {
 				return this.pushsocket.getUserInfo(u);
 			});
 
-			this.io.in('admin').emit('admin/request', extend({
+			this.io.in('admin').emit('admin/request', extend({}, msg, this.user, {
 				'channel': this.prefix + msg.channel,
 				'presence': users
-			}, msg, this.user));
+			}));
 
 
 			// is this necessary? callback below might be enough
