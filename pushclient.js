@@ -220,11 +220,13 @@ module.exports = class PushClient {
 			emitCallback = () => {}
 		}
 
-		this.pushsocket.getPresence(msg.channel||message.channels, (presence)=>{
+		this.pushsocket.getPresence(this.prefix, msg.channel||message.channels, (presence)=>{
 
 			emitCallback(presence);
+	        
 	        this.socket.emit('presence', presence); //only sent to requestor
-	            
+	        
+	        this.io.in('admin').emit('admin/request', extend({}, msg, this.user, presence));
 
 		});
 

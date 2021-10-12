@@ -63,7 +63,8 @@ function SIOServer() {
         var user = {
             user: credentials.username || "guest",
             socket: req.ip,
-            ip: req.ips
+            ip: req.ips,
+            _ip:req.headers['x-forwarded-for'] || req.socket.remoteAddress
         }
 
         var channel=req.body.channel||req.query.channel||"";
@@ -120,7 +121,8 @@ function SIOServer() {
         var user = {
             user: credentials.username || "guest",
             socket: req.ip,
-            ip: req.ips
+            ip: req.ips,
+            _ip:req.headers['x-forwarded-for'] || req.socket.remoteAddress
         }
 
         var channels=req.body.channels||req.query.channels||"";
@@ -139,33 +141,10 @@ function SIOServer() {
         }
 
 
-        pushsocket.getPresence(channel||channels, (presence)=>{
-            res.send(JSON.stringify(extend({'success':true}, presence));
+        pushsocket.getPresence(prefix, channel||channels, (presence)=>{
+            res.send(JSON.stringify(extend({'success':true}, presence)));
+            io.in('admin').emit('admin/request', extend({}, user, presence));
         });
-
-
-        // if(channels&&!channel){
-        
-        //     pushsocket.getPresence(channels, (list)=>{
-        //         res.send(JSON.stringify({
-        //             'channels': channels,
-        //             'presence': list,
-        //             'success':true
-        //         }));
-        //     });
-
-        //     return;
-        // }
-
-
-        // pushsocket.getPresence([channel], (list)=>{
-        //     res.send(JSON.stringify({
-        //         'channel': channel,
-        //         'presence': list.pop().presence,
-        //         'success':true
-        //     }));
-        // });
-
 
     });
 

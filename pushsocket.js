@@ -121,14 +121,14 @@ module.exports = class PushSocket {
 
 	}
 
-	getPresence(channels, callback){
+	getPresence(prefix, channels, callback){
 
 
 		if(typeof channels=="string"){
 
 			
 
-			this._getPresence([channels], (list)=>{
+			this._getPresence(prefix, [channels], (list)=>{
 
 				var presence={
 	                'channel': channels,
@@ -136,8 +136,6 @@ module.exports = class PushSocket {
 	            };
 
 	            callback(presence);
-
-	            this.io.in('admin').emit('admin/request', extend({}, msg, this.user, presence));
 
 	        });
 
@@ -149,7 +147,7 @@ module.exports = class PushSocket {
 
 		
 
-		this._getPresence(channels, (list)=>{
+		this._getPresence(prefix, channels, (list)=>{
 
 			var presence={
 	            'channels': channels,
@@ -158,14 +156,12 @@ module.exports = class PushSocket {
 
             callback(presence);
 
-            this.io.in('admin').emit('admin/request', extend({}, msg, this.user, presence));
-
         });
 
 
 	}
 
-	_getPresence(channelList, fn){
+	_getPresence(prefix, channelList, fn){
 
 		var listPresence = [];
 		var getChannelPresence = (channels, then) => {
@@ -176,7 +172,7 @@ module.exports = class PushSocket {
 				return;
 			}
 
-			this.io.in(this.prefix + channels[0]).clients((err, list) => {
+			this.io.in(prefix + channels[0]).clients((err, list) => {
 				var users = list.map((u) => {
 					return this.getUserInfo(u);
 				});
