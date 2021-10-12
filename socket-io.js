@@ -131,7 +131,8 @@ function SIOServer() {
         pushsocket.getPresence(channels, (list)=>{
             res.send(JSON.stringify({
                 'channels': channels,
-                'presence': list
+                'presence': list,
+                'success':true
             }));
         });
 
