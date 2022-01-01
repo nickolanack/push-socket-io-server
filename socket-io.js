@@ -150,10 +150,10 @@ function SIOServer() {
 
 
     this.listen = (port, then) => {
-        http.listen(port, function() {
+        http.listen(port, () => {
             console.log('listening on *:' + port);
             if(then){
-                then();
+                then(this);
             }
         });
     };
@@ -167,4 +167,6 @@ if(process.argv&&process.argv[1]===__filename){
 }
 
 
-module.exports = SIOServer;
+module.exports = {
+    SocketIOServer:SIOServer
+};
