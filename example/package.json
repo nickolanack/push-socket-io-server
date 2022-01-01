@@ -1,0 +1,15 @@
+{
+  "name": "example",
+  "version": "1.0.0",
+  "description": "example client & server",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "push-node-socket-io-client": "git+https://github.com/nickolanack/push-node-socket-io-client.git",
+    "push-node-socket-io-server": "git+https://github.com/nickolanack/push-socket-io-server.git"
+  }
+}

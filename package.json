@@ -1,10 +1,11 @@
 {
-  "name": "socket-chat-example",
+  "name": "push-node-socket-io-server",
   "version": "0.0.1",
-  "description": "my first socket.io app",
+  "description": "socket io push server",
   "dependencies": {
     "express": "^4.16.4",
     "socket.io": "^2.2.0",
     "twig": "^1.13.3"
-  }
+  },
+  "main": "index.js",
 }

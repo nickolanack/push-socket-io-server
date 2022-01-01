@@ -159,4 +159,9 @@ function SIOServer() {
 
 
 
-(new SIOServer()).listen(8090)
+if(process.argv&&process.argv[1]===__filename){
+    (new SIOServer()).listen(8090)
+}
+
+
+module.exports = SIOServer;

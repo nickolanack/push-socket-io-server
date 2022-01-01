@@ -83,6 +83,10 @@ module.exports = class PushClient {
 
 	}
 
+	authorizeClient(channel){
+		return true;
+	}
+
 	subscribe(channel, emitCallback) {
 
 		if (typeof channel.channel == "string") {
@@ -98,6 +102,9 @@ module.exports = class PushClient {
 			return;
 		}
 
+		if(!this.authorizeClient(channel)){
+
+		}
 
 
 		console.log('channel join: ' + this.prefix + channel + ': ' + JSON.stringify(this.user));
