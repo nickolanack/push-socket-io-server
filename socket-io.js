@@ -149,9 +149,12 @@ function SIOServer() {
     });
 
 
-    this.listen = (port) => {
+    this.listen = (port, then) => {
         http.listen(port, function() {
             console.log('listening on *:' + port);
+            if(then){
+                then();
+            }
         });
     };
 
