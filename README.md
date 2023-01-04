@@ -1,7 +1,8 @@
 # push-socket-io-server
 socket io server customized to provide push message functionality
 
-Tecnically this is meant to replace my use of Pusher.com message server and provides similar functionality using socketio 
+This is just a customized socketio server app meant to replace `Pusher` message server in my personal apps. It provides similar functionality using socketio 
+
 This provides: event channels, subscriptions, presence channels, as well as supoorts seperate applications and namespaced applications (same app/authentication but seperate event channels) 
 
 
