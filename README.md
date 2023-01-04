@@ -75,3 +75,4 @@ There is a cron.js file that you can run as a cronjob to ensure that the socket-
 
 Built in monitoring interface
 
+![Control Panel](https://raw.githubusercontent.com/nickolanack/push-socket-io-server/master/controlpanel.png)
