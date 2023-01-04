@@ -32,11 +32,11 @@ There is a cron.js file that you can run as a cronjob to ensure that the socket-
 
 # Client usage 
 
-
-see https://github.com/nickolanack/push-node-socket-io-client
-see https://github.com/nickolanack/push-php-socket-io-client
-see https://github.com/nickolanack/push-unity-socket-io-client
-see https://github.com/nickolanack/push-tns-socket-io-client
+Some other clients
+- see https://github.com/nickolanack/push-node-socket-io-client
+- see https://github.com/nickolanack/push-php-socket-io-client
+- see https://github.com/nickolanack/push-unity-socket-io-client
+- see https://github.com/nickolanack/push-tns-socket-io-client
 
 ```html
 	<script type="text/javascript" src="https://your-socket-io-server/client.js"></script>
