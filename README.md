@@ -70,3 +70,8 @@ There is a cron.js file that you can run as a cronjob to ensure that the socket-
 
 
 ```
+
+# Control Panel / Monitoring
+
+Built in monitoring interface
+
