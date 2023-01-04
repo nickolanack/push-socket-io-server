@@ -9,13 +9,23 @@ module.exports = class PushSocket {
 	constructor(path, io) {
 
 
+		this._apps = {
+			'default': {}
+		};
+
 		this.io = io;
 		this.io.on('connection', (socket) => {
 
-			console.log('socket: ' + socket.request.headers['x-forwarded-for']);
+			var id = typeof socket.request.headers['x-forwarded-for'] != 'undefined' ? socket.request.headers['x-forwarded-for'] : socket.conn.id
+
+			console.log('pushsocket: ' + id);
 			socket.once('authenticate', (credentials, authCallback) => {
+
+				console.log('Server authenticating client: ' + id);
+
 				this.authorizeSocket(socket, credentials, authCallback);
 			});
+
 
 		});
 
@@ -53,23 +63,28 @@ module.exports = class PushSocket {
 			this.addUser(socket, user);
 			authCallback(true);
 			return;
-			
+
 		}
 
 
 
-
+		if (!this.isValidApp(credentials)) {
+			authCallback(false);
+			return;
+		}
 
 		var client = new PushClient(this, socket, credentials, (auth) => {
 
 
-			if(!auth){
-
+			if (!auth) {
 
 
 
 			}
 
+
+
+			console.log('New PushClient');
 
 			authCallback(auth);
 
@@ -121,47 +136,46 @@ module.exports = class PushSocket {
 
 	}
 
-	getPresence(prefix, channels, callback){
+	getPresence(prefix, channels, callback) {
 
 
-		if(typeof channels=="string"){
+		if (typeof channels == "string") {
 
-			
 
-			this._getPresence(prefix, [channels], (list)=>{
 
-				var presence={
-	                'channel': channels,
-	                'presence': list.pop().presence,
-	            };
+			this._getPresence(prefix, [channels], (list) => {
 
-	            callback(presence);
+				var presence = {
+					'channel': channels,
+					'presence': list.pop().presence,
+				};
 
-	        });
+				callback(presence);
 
-	        
-	        return;
+			});
+
+
+			return;
 
 		}
 
 
-		
 
-		this._getPresence(prefix, channels, (list)=>{
+		this._getPresence(prefix, channels, (list) => {
 
-			var presence={
-	            'channels': channels,
-	            'presence': list,
-	        };
+			var presence = {
+				'channels': channels,
+				'presence': list,
+			};
 
-            callback(presence);
+			callback(presence);
 
-        });
+		});
 
 
 	}
 
-	_getPresence(prefix, channelList, fn){
+	_getPresence(prefix, channelList, fn) {
 
 		var listPresence = [];
 		var getChannelPresence = (channels, then) => {
@@ -198,7 +212,7 @@ module.exports = class PushSocket {
 			emitCallback = () => {};
 		}
 
-		
+
 
 		this.io.in(prefix + msg.channel).clients((err, list) => {
 			this.io.in('admin').emit('admin/emit', extend({
@@ -211,6 +225,70 @@ module.exports = class PushSocket {
 
 	}
 
+	webhookAuth(client, channel, appData, callback) {
+
+		console.log(appData.channelAuth)
+
+
+
+		const https = require('https')
+
+		const data = JSON.stringify(client.credentials);
+
+		const options = {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'Content-Length': data.length
+			}
+		}
+
+		const req = https.request(appData.channelAuth, options, res => {
+			console.log(`statusCode: ${res.statusCode}`)
+
+			res.on('data', d => {
+				console.log("Response: "+d);
+				callback(true);
+			});
+		})
+
+		req.on('error', error => {
+			console.error(error)
+		})
+
+		req.write(data);
+		req.end();
+
+
+
+
+
+	}
+
+	authorizeClientChannel(client, channel, callback) {
+
+		var appData = this.getAppData(client.credentials.appId);
+		if (!client.credentials.appId) {
+			throw 'Expected appId';
+		}
+
+		console.log(appData);
+		if (appData.channelAuth) {
+			this.webhookAuth(client, channel, appData, callback);
+			return;
+		}
+
+		console.log('Authorized client subscription: ' + channel);
+
+		callback(true);
+
+	}
+
+	authorizeClientPresenceChannel(client, channel, callback) {
+
+		callback(true);
+
+	}
 
 	addAdminTaskListeners(socket) {
 
@@ -245,7 +323,7 @@ module.exports = class PushSocket {
 
 				callback(list.map((socket) => {
 					var info = this.getUserInfo(socket);
-					return info.socket+": "+info.appId + " " + info.project;
+					return info.socket + ": " + info.appId + " " + info.project;
 				}).filter((value, index, array) => {
 					return array.indexOf(value) === index;
 				}));
@@ -321,22 +399,55 @@ module.exports = class PushSocket {
 		var id = socket.id || socket;
 
 		if (!this._users) {
-			return {id:id};
+			return {
+				id: id
+			};
 		}
 
 		if (!this._users[id]) {
-			return {id:id};
+			return {
+				id: id
+			};
 		}
 
 		return this._users[id];
 	}
 
 
+
+	addAppDefinition(name, config) {
+		this._apps[name] = config;
+		return this;
+	}
+
+
+	isValidApp(credentials) {
+
+		var fs = require('fs');
+
+		if (!credentials.appId) {
+			console.error('Expected credentials.appId');
+			return false;
+		}
+
+		if (!(this._apps[credentials.appId] || fs.existsSync(__dirname + '/appdata/' + credentials.appId + '.json'))) {
+			console.error('Expected app file at: ' + __dirname + '/appdata/' + credentials.appId + '.json');
+			return false;
+		}
+
+		return true;
+	};
+
 	getAppInfo(credentials) {
 
 		var fs = require('fs');
 		var appDataFile = __dirname + '/appdata/' + credentials.appId + '.json';
-		if (!(credentials.appId && fs.existsSync(appDataFile))) {
+
+
+		var appData = this.getAppData(credentials.appId);
+
+
+		if (!appData) {
 			return {
 
 				"namespace": credentials.namespace || 'default',
@@ -346,7 +457,7 @@ module.exports = class PushSocket {
 			};
 		}
 
-		var appData = JSON.parse(fs.readFileSync(appDataFile));
+
 
 		return {
 
@@ -357,11 +468,29 @@ module.exports = class PushSocket {
 		};
 	}
 
+	getAppData(appId) {
 
 
-	isValidApp(credentials) {
-		return (credentials.appId);
-	};
+		if (!appId) {
+			return false;
+		}
+
+		if (this._apps[appId]) {
+			return this._apps[appId];
+		}
+
+
+		var fs = require('fs');
+		var appDataFile = __dirname + '/appdata/' + appId + '.json';
+		if (!(appId && fs.existsSync(appDataFile))) {
+			return false;
+		}
+
+		return JSON.parse(fs.readFileSync(appDataFile));
+
+
+
+	}
 
 	messageCredentials(msg) {
 		if (msg.credentials) {
@@ -373,13 +502,7 @@ module.exports = class PushSocket {
 
 	clientCanEmit(credentials) {
 
-		var fs = require('fs');
-		var appDataFile = __dirname + '/appdata/' + credentials.appId + '.json';
-		if (!(credentials.appId && fs.existsSync(appDataFile))) {
-			return false;
-		}
-
-		var appData = JSON.parse(fs.readFileSync(appDataFile));
+		var appData = this.getAppData(credentials.appId);
 
 		if (credentials.username === appData.username && credentials.password === appData.password) {
 			return true;
@@ -395,13 +518,8 @@ module.exports = class PushSocket {
 
 	clientCanMonitorAdmin(credentials) {
 
-		var fs = require('fs');
-		var adminDataFile = __dirname + '/appdata/admin.json';
-		if (!fs.existsSync(adminDataFile)) {
-			return false;
-		}
 
-		var adminData = JSON.parse(fs.readFileSync(adminDataFile));
+		var adminData = this.getAppData('admin');
 
 		if (credentials.username === adminData.username && credentials.password === adminData.password) {
 			return true;

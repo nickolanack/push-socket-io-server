@@ -64,10 +64,9 @@ module.exports = class PushClient {
 			this.attemptEmit(msg, emitCallback);
 		});
 
-
 		if (this.pushsocket.clientCanEmit(credentials)) {
 			this.socket.on('presence', (msg, emitCallback) => {
-				this.subscribeToPresence(msg, emitCallback);
+				this.getPresence(msg, emitCallback);
 			});
 		}
 
@@ -80,12 +79,9 @@ module.exports = class PushClient {
 		});
 
 
-
 	}
 
-	authorizeClient(channel){
-		return true;
-	}
+	
 
 	subscribe(channel, emitCallback) {
 
@@ -102,40 +98,45 @@ module.exports = class PushClient {
 			return;
 		}
 
-		if(!this.authorizeClient(channel)){
+		this.pushsocket.authorizeClientChannel(this, this.prefix + channel, (success)=>{
 
-		}
-
-
-		console.log('channel join: ' + this.prefix + channel + ': ' + JSON.stringify(this.user));
-		this.socket.join(this.prefix + channel, () => {
-
-			this.io.in('admin').emit('admin/join', extend({
-				channel: channel
-			}, this.user));
-
-
-			this.pushsocket.updateUsersRooms(this.socket);
-			console.log('join: ' + this.prefix + channel);
-			console.log(JSON.stringify(this.socket.rooms));
-
-			if (channel.indexOf('.presence') < 0) {
-				this.io.in(this.prefix + channel).clients((err, list) => {
-					this.io.in(this.prefix + channel + ".presence").emit(channel + '.presence', {
-						list: list,
-						channel: channel,
-						added: this.user
-					});
-					this.io.in('admin').emit('admin/presence', extend({
-						list: list,
-						channel: channel,
-						added: this.user
-					}, this.appInfo));
-				});
-
+			if(!success){
+				emitCallback(false);
+				return;
 			}
 
-			emitCallback(true);
+
+			console.log('channel join: ' + this.prefix + channel + ': ' + JSON.stringify(this.user));
+			this.socket.join(this.prefix + channel, () => {
+
+				this.io.in('admin').emit('admin/join', extend({
+					channel: channel
+				}, this.user));
+
+
+				this.pushsocket.updateUsersRooms(this.socket);
+				console.log('join: ' + this.prefix + channel);
+				console.log(JSON.stringify(this.socket.rooms));
+
+				if (channel.indexOf('.presence') < 0) {
+					this.io.in(this.prefix + channel).clients((err, list) => {
+						this.io.in(this.prefix + channel + ".presence").emit(channel + '.presence', {
+							list: list,
+							channel: channel,
+							added: this.user
+						});
+						this.io.in('admin').emit('admin/presence', extend({
+							list: list,
+							channel: channel,
+							added: this.user
+						}, this.appInfo));
+					});
+
+				}
+
+				emitCallback(true);
+
+			});
 
 		});
 
@@ -221,7 +222,7 @@ module.exports = class PushClient {
 	}
 
 
-	subscribeToPresence(msg, emitCallback) {
+	getPresence(msg, emitCallback) {
 
 		if (!emitCallback) {
 			emitCallback = () => {}
@@ -230,6 +231,10 @@ module.exports = class PushClient {
 		this.pushsocket.getPresence(this.prefix, msg.channel||message.channels, (presence)=>{
 
 			emitCallback(presence);
+
+
+
+
 	        
 	        this.socket.emit('presence', presence); //only sent to requestor
 	        
