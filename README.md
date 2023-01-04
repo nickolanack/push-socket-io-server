@@ -1,7 +1,8 @@
 # push-socket-io-server
 socket io server customized to provide push message functionality
 
-Tecnically this is meant to replace my use of Pusher.com message server and provides similar functionality using socketio 
+This is just a customized socketio server app meant to replace `Pusher` message server in my personal apps. It provides similar functionality using socketio 
+
 This provides: event channels, subscriptions, presence channels, as well as supoorts seperate applications and namespaced applications (same app/authentication but seperate event channels) 
 
 
@@ -22,6 +23,11 @@ This provides: event channels, subscriptions, presence channels, as well as supo
 
 ```
 
+```bash
+	# Generate additional app-ids 
+	node generate.js
+```
+
 # Cron
 
 There is a cron.js file that you can run as a cronjob to ensure that the socket-io is running
@@ -32,6 +38,11 @@ There is a cron.js file that you can run as a cronjob to ensure that the socket-
 
 # Client usage 
 
+Some other clients
+- see https://github.com/nickolanack/push-node-socket-io-client
+- see https://github.com/nickolanack/push-php-socket-io-client
+- see https://github.com/nickolanack/push-unity-socket-io-client
+- see https://github.com/nickolanack/push-tns-socket-io-client
 
 ```html
 	<script type="text/javascript" src="https://your-socket-io-server/client.js"></script>
@@ -70,3 +81,9 @@ There is a cron.js file that you can run as a cronjob to ensure that the socket-
 
 
 ```
+
+# Control Panel / Monitoring
+
+Built in simple monitoring ui. Make sure you restrict access to view!
+
+![Control Panel](https://raw.githubusercontent.com/nickolanack/push-socket-io-server/master/controlpanel.png)
