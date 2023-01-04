@@ -22,6 +22,11 @@ This provides: event channels, subscriptions, presence channels, as well as supo
 
 ```
 
+```bash
+	# Generate additional app-ids 
+	node generate.js
+```
+
 # Cron
 
 There is a cron.js file that you can run as a cronjob to ensure that the socket-io is running
