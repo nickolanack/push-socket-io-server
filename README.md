@@ -30,7 +30,7 @@ There is a cron.js file that you can run as a cronjob to ensure that the socket-
 * * * * * node /path/to/socket-io/cron.js > /path/to/socket-io/.cronlog 2>&1
 ```
 
-#Client usage 
+# Client usage 
 
 
 ```html
