@@ -8,8 +8,13 @@
   },
   "author": "",
   "license": "MIT",
-  "dependencies": {
+  "-dependencies": {
     "push-node-socket-io-client": "git+https://github.com/nickolanack/push-node-socket-io-client.git",
     "push-node-socket-io-server": "git+https://github.com/nickolanack/push-socket-io-server.git"
+  },
+  "dependencies": {
+    "md5": "^2.3.0",
+    "push-node-socket-io-client": "file:../../push-node-socket-io-client",
+    "push-node-socket-io-server": "file:../"
   }
 }

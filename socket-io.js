@@ -19,6 +19,22 @@ class SIOServer {
         var wconsole = new WebConsole(__dirname, server);
 
 
+        fs.readFile(__dirname + '/appdata/admin.json', function(err, data) {
+            if (err) {
+                console.log('error:' + err);
+                return;
+            }
+
+            var config=JSON.parse(data.toString());
+
+            if(config.enabled!==true){
+                return;
+            }
+
+            wconsole.showAdmin(config);
+        });
+
+
         var http = require('http').Server(server);
         this.http=http;
         var io = require('socket.io')(http);
