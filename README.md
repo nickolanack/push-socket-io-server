@@ -84,6 +84,16 @@ Some other clients
 
 # Control Panel / Monitoring
 
-Built in simple monitoring ui. Make sure you restrict access to view!
+Built in simple monitoring ui. To enable the monitoring ui, add admin.json to the appdata folder
+```js
+//admin.json 
+{
+	"username":"{username}",
+	"password":"{password}",
+	"project":"admin",
+	"enabled":true,
+	"location":"/admin"
+}
+```
 
 ![Control Panel](https://raw.githubusercontent.com/nickolanack/push-socket-io-server/master/controlpanel.png)
