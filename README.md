@@ -96,4 +96,6 @@ Built in simple monitoring ui. To enable the monitoring ui, add admin.json to th
 }
 ```
 
+**Only enable the monitoring if you can restrict access to it!**
+
 ![Control Panel](https://raw.githubusercontent.com/nickolanack/push-socket-io-server/master/controlpanel.png)
