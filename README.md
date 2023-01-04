@@ -84,6 +84,6 @@ Some other clients
 
 # Control Panel / Monitoring
 
-Built in monitoring interface. Make sure you restrict access to view!
+Built in simple monitoring ui. Make sure you restrict access to view!
 
 ![Control Panel](https://raw.githubusercontent.com/nickolanack/push-socket-io-server/master/controlpanel.png)
