@@ -5,7 +5,7 @@
   "dependencies": {
     "express": "^4.19.2",
     "socket.io": "^2.5.0",
-    "twig": "^1.13.3"
+    "twig": "^3.0.0"
   },
   "main": "socket-io.js"
 }
